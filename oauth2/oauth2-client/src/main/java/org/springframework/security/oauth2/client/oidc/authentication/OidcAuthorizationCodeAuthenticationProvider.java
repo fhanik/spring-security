@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 package org.springframework.security.oauth2.client.oidc.authentication;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
@@ -43,9 +39,12 @@ import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoderJwkSupport;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
+
+import java.util.Collection;
+import java.util.Map;
 
 /**
  * An implementation of an {@link AuthenticationProvider}
@@ -67,18 +66,18 @@ import org.springframework.util.StringUtils;
  * @see OAuth2AccessTokenResponseClient
  * @see OidcUserService
  * @see OidcUser
- * @see <a target="_blank" href="http://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">Section 3.1 Authorization Code Grant Flow</a>
- * @see <a target="_blank" href="http://openid.net/specs/openid-connect-core-1_0.html#TokenRequest">Section 3.1.3.1 Token Request</a>
- * @see <a target="_blank" href="http://openid.net/specs/openid-connect-core-1_0.html#TokenResponse">Section 3.1.3.3 Token Response</a>
+ * @see OidcIdTokenDecoderFactory
+ * @see <a target="_blank" href="https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">Section 3.1 Authorization Code Grant Flow</a>
+ * @see <a target="_blank" href="https://openid.net/specs/openid-connect-core-1_0.html#TokenRequest">Section 3.1.3.1 Token Request</a>
+ * @see <a target="_blank" href="https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse">Section 3.1.3.3 Token Response</a>
  */
 public class OidcAuthorizationCodeAuthenticationProvider implements AuthenticationProvider {
 	private static final String INVALID_STATE_PARAMETER_ERROR_CODE = "invalid_state_parameter";
 	private static final String INVALID_REDIRECT_URI_PARAMETER_ERROR_CODE = "invalid_redirect_uri_parameter";
 	private static final String INVALID_ID_TOKEN_ERROR_CODE = "invalid_id_token";
-	private static final String MISSING_SIGNATURE_VERIFIER_ERROR_CODE = "missing_signature_verifier";
 	private final OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient;
 	private final OAuth2UserService<OidcUserRequest, OidcUser> userService;
-	private final Map<String, JwtDecoder> jwtDecoders = new ConcurrentHashMap<>();
+	private JwtDecoderFactory<ClientRegistration> jwtDecoderFactory = new OidcIdTokenDecoderFactory();
 	private GrantedAuthoritiesMapper authoritiesMapper = (authorities -> authorities);
 
 	/**
@@ -102,7 +101,7 @@ public class OidcAuthorizationCodeAuthenticationProvider implements Authenticati
 		OAuth2LoginAuthenticationToken authorizationCodeAuthentication =
 			(OAuth2LoginAuthenticationToken) authentication;
 
-		// Section 3.1.2.1 Authentication Request - http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+		// Section 3.1.2.1 Authentication Request - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 		// scope
 		// 		REQUIRED. OpenID Connect requests MUST contain the "openid" scope value.
 		if (!authorizationCodeAuthentication.getAuthorizationExchange()
@@ -173,6 +172,18 @@ public class OidcAuthorizationCodeAuthenticationProvider implements Authenticati
 	}
 
 	/**
+	 * Sets the {@link JwtDecoderFactory} used for {@link OidcIdToken} signature verification.
+	 * The factory returns a {@link JwtDecoder} associated to the provided {@link ClientRegistration}.
+	 *
+	 * @since 5.2
+	 * @param jwtDecoderFactory the {@link JwtDecoderFactory} used for {@link OidcIdToken} signature verification
+	 */
+	public final void setJwtDecoderFactory(JwtDecoderFactory<ClientRegistration> jwtDecoderFactory) {
+		Assert.notNull(jwtDecoderFactory, "jwtDecoderFactory cannot be null");
+		this.jwtDecoderFactory = jwtDecoderFactory;
+	}
+
+	/**
 	 * Sets the {@link GrantedAuthoritiesMapper} used for mapping {@link OidcUser#getAuthorities()}}
 	 * to a new set of authorities which will be associated to the {@link OAuth2LoginAuthenticationToken}.
 	 *
@@ -189,29 +200,15 @@ public class OidcAuthorizationCodeAuthenticationProvider implements Authenticati
 	}
 
 	private OidcIdToken createOidcToken(ClientRegistration clientRegistration, OAuth2AccessTokenResponse accessTokenResponse) {
-		JwtDecoder jwtDecoder = getJwtDecoder(clientRegistration);
-		Jwt jwt = jwtDecoder.decode((String) accessTokenResponse.getAdditionalParameters().get(
-				OidcParameterNames.ID_TOKEN));
-		OidcIdToken idToken = new OidcIdToken(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims());
-		OidcTokenValidator.validateIdToken(idToken, clientRegistration);
-		return idToken;
-	}
-
-	private JwtDecoder getJwtDecoder(ClientRegistration clientRegistration) {
-		JwtDecoder jwtDecoder = this.jwtDecoders.get(clientRegistration.getRegistrationId());
-		if (jwtDecoder == null) {
-			if (!StringUtils.hasText(clientRegistration.getProviderDetails().getJwkSetUri())) {
-				OAuth2Error oauth2Error = new OAuth2Error(
-						MISSING_SIGNATURE_VERIFIER_ERROR_CODE,
-						"Failed to find a Signature Verifier for Client Registration: '" +
-								clientRegistration.getRegistrationId() + "'. Check to ensure you have configured the JwkSet URI.",
-						null
-				);
-				throw new OAuth2AuthenticationException(oauth2Error, oauth2Error.toString());
-			}
-			jwtDecoder = new NimbusJwtDecoderJwkSupport(clientRegistration.getProviderDetails().getJwkSetUri());
-			this.jwtDecoders.put(clientRegistration.getRegistrationId(), jwtDecoder);
+		JwtDecoder jwtDecoder = this.jwtDecoderFactory.createDecoder(clientRegistration);
+		Jwt jwt;
+		try {
+			jwt = jwtDecoder.decode((String) accessTokenResponse.getAdditionalParameters().get(OidcParameterNames.ID_TOKEN));
+		} catch (JwtException ex) {
+			OAuth2Error invalidIdTokenError = new OAuth2Error(INVALID_ID_TOKEN_ERROR_CODE, ex.getMessage(), null);
+			throw new OAuth2AuthenticationException(invalidIdTokenError, invalidIdTokenError.toString(), ex);
 		}
-		return jwtDecoder;
+		OidcIdToken idToken = new OidcIdToken(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims());
+		return idToken;
 	}
 }

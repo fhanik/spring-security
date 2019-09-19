@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.sql.DataSource;
 
+import org.aopalliance.intercept.MethodInterceptor;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,6 +35,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.PermissionEvaluator;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.access.intercept.aopalliance.MethodSecurityInterceptor;
@@ -249,7 +251,7 @@ public class GlobalMethodSecurityConfigurationTests {
 	}
 
 	@Test
-	public void multiPermissionEvaluatorConfig() throws Exception {
+	public void multiPermissionEvaluatorConfig() {
 		this.spring.register(MultiPermissionEvaluatorConfig.class).autowire();
 
 		// no exception
@@ -366,8 +368,8 @@ public class GlobalMethodSecurityConfigurationTests {
 	}
 
 	static class MockBeanPostProcessor implements BeanPostProcessor {
-		Map<String, Object> beforeInit = new HashMap<String, Object>();
-		Map<String, Object> afterInit = new HashMap<String, Object>();
+		Map<String, Object> beforeInit = new HashMap<>();
+		Map<String, Object> afterInit = new HashMap<>();
 
 		@Override
 		public Object postProcessBeforeInitialization(Object bean, String beanName) throws
@@ -513,5 +515,59 @@ public class GlobalMethodSecurityConfigurationTests {
 			@PreAuthorize("hasRole('ROLE:USER')")
 			public void customPrefixRoleUser() {}
 		}
+	}
+
+	@Test
+	@WithMockUser(authorities = "USER")
+	public void grantedAuthorityDefaultsWithEmptyRolePrefix() {
+		this.spring.register(EmptyRolePrefixGrantedAuthorityConfig.class).autowire();
+
+		EmptyRolePrefixGrantedAuthorityConfig.CustomAuthorityService customService = this.spring.getContext()
+				.getBean(EmptyRolePrefixGrantedAuthorityConfig.CustomAuthorityService.class);
+
+		assertThatThrownBy(() -> this.service.securedUser())
+				.isInstanceOf(AccessDeniedException.class);
+
+		customService.emptyPrefixRoleUser();
+		// no exception
+	}
+
+	@EnableGlobalMethodSecurity(securedEnabled = true)
+	static class EmptyRolePrefixGrantedAuthorityConfig {
+		@Bean
+		public GrantedAuthorityDefaults ga() {
+			return new GrantedAuthorityDefaults("");
+		}
+
+		@Bean
+		public CustomAuthorityService service() {
+			return new CustomAuthorityService();
+		}
+
+		@Bean
+		public MethodSecurityServiceImpl methodSecurityService() {
+			return new MethodSecurityServiceImpl();
+		}
+
+		static class CustomAuthorityService {
+			@Secured("USER")
+			public void emptyPrefixRoleUser() {}
+		}
+	}
+
+	@Test
+	public void methodSecurityInterceptorUsesMetadataSourceBeanWhenProxyingDisabled() {
+		this.spring.register(CustomMetadataSourceBeanProxyEnabledConfig.class).autowire();
+		MethodSecurityInterceptor methodInterceptor =
+				(MethodSecurityInterceptor) this.spring.getContext().getBean(MethodInterceptor.class);
+		MethodSecurityMetadataSource methodSecurityMetadataSource =
+				this.spring.getContext().getBean(MethodSecurityMetadataSource.class);
+
+		assertThat(methodInterceptor.getSecurityMetadataSource()).isSameAs(methodSecurityMetadataSource);
+	}
+
+	@EnableGlobalMethodSecurity(prePostEnabled = true)
+	@Configuration
+	public static class CustomMetadataSourceBeanProxyEnabledConfig extends GlobalMethodSecurityConfiguration {
 	}
 }

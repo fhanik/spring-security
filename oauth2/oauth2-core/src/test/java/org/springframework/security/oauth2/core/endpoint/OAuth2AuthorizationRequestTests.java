@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.*;
 public class OAuth2AuthorizationRequestTests {
 	private static final String AUTHORIZATION_URI = "https://provider.com/oauth2/authorize";
 	private static final String CLIENT_ID = "client-id";
-	private static final String REDIRECT_URI = "http://example.com";
+	private static final String REDIRECT_URI = "https://example.com";
 	private static final Set<String> SCOPES = new LinkedHashSet<>(Arrays.asList("scope1", "scope2"));
 	private static final String STATE = "state";
 
@@ -163,6 +163,10 @@ public class OAuth2AuthorizationRequestTests {
 		additionalParameters.put("param1", "value1");
 		additionalParameters.put("param2", "value2");
 
+		Map<String, Object> attributes = new HashMap<>();
+		attributes.put("attribute1", "value1");
+		attributes.put("attribute2", "value2");
+
 		OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
 				.authorizationUri(AUTHORIZATION_URI)
 				.clientId(CLIENT_ID)
@@ -170,6 +174,7 @@ public class OAuth2AuthorizationRequestTests {
 				.scopes(SCOPES)
 				.state(STATE)
 				.additionalParameters(additionalParameters)
+				.attributes(attributes)
 				.authorizationRequestUri(AUTHORIZATION_URI)
 				.build();
 
@@ -181,6 +186,7 @@ public class OAuth2AuthorizationRequestTests {
 		assertThat(authorizationRequest.getScopes()).isEqualTo(SCOPES);
 		assertThat(authorizationRequest.getState()).isEqualTo(STATE);
 		assertThat(authorizationRequest.getAdditionalParameters()).isEqualTo(additionalParameters);
+		assertThat(authorizationRequest.getAttributes()).isEqualTo(attributes);
 		assertThat(authorizationRequest.getAuthorizationRequestUri()).isEqualTo(AUTHORIZATION_URI);
 	}
 
@@ -194,7 +200,11 @@ public class OAuth2AuthorizationRequestTests {
 				.state(STATE)
 				.build();
 
-		assertThat(authorizationRequest.getAuthorizationRequestUri()).isEqualTo("https://provider.com/oauth2/authorize?response_type=token&client_id=client-id&scope=scope1+scope2&state=state&redirect_uri=http%3A%2F%2Fexample.com");
+		assertThat(authorizationRequest.getAuthorizationRequestUri())
+				.isEqualTo("https://provider.com/oauth2/authorize?" +
+						"response_type=token&client_id=client-id&" +
+						"scope=scope1%20scope2&state=state&" +
+						"redirect_uri=https://example.com");
 	}
 
 	@Test
@@ -226,7 +236,11 @@ public class OAuth2AuthorizationRequestTests {
 				.build();
 
 		assertThat(authorizationRequest.getAuthorizationRequestUri()).isNotNull();
-		assertThat(authorizationRequest.getAuthorizationRequestUri()).isEqualTo("https://provider.com/oauth2/authorize?response_type=code&client_id=client-id&scope=scope1+scope2&state=state&redirect_uri=http%3A%2F%2Fexample.com&param1=value1&param2=value2");
+		assertThat(authorizationRequest.getAuthorizationRequestUri())
+				.isEqualTo("https://provider.com/oauth2/authorize?" +
+						"response_type=code&client_id=client-id&" +
+						"scope=scope1%20scope2&state=state&" +
+						"redirect_uri=https://example.com&param1=value1&param2=value2");
 	}
 
 	@Test
@@ -240,24 +254,6 @@ public class OAuth2AuthorizationRequestTests {
 	}
 
 	@Test
-	public void buildWhenAuthorizationRequestIncludesRegistrationIdParameterThenAuthorizationRequestUriDoesNotIncludeRegistrationIdParameter() {
-		Map<String, Object> additionalParameters = new HashMap<>();
-		additionalParameters.put("param1", "value1");
-		additionalParameters.put(OAuth2ParameterNames.REGISTRATION_ID, "registration1");
-
-		OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
-				.authorizationUri(AUTHORIZATION_URI)
-				.clientId(CLIENT_ID)
-				.redirectUri(REDIRECT_URI)
-				.scopes(SCOPES)
-				.state(STATE)
-				.additionalParameters(additionalParameters)
-				.build();
-
-		assertThat(authorizationRequest.getAuthorizationRequestUri()).isEqualTo("https://provider.com/oauth2/authorize?response_type=code&client_id=client-id&scope=scope1+scope2&state=state&redirect_uri=http%3A%2F%2Fexample.com&param1=value1");
-	}
-
-	@Test
 	public void fromWhenAuthorizationRequestIsNullThenThrowIllegalArgumentException() {
 		assertThatThrownBy(() -> OAuth2AuthorizationRequest.from(null)).isInstanceOf(IllegalArgumentException.class);
 	}
@@ -268,6 +264,10 @@ public class OAuth2AuthorizationRequestTests {
 		additionalParameters.put("param1", "value1");
 		additionalParameters.put("param2", "value2");
 
+		Map<String, Object> attributes = new HashMap<>();
+		attributes.put("attribute1", "value1");
+		attributes.put("attribute2", "value2");
+
 		OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
 				.authorizationUri(AUTHORIZATION_URI)
 				.clientId(CLIENT_ID)
@@ -275,6 +275,7 @@ public class OAuth2AuthorizationRequestTests {
 				.scopes(SCOPES)
 				.state(STATE)
 				.additionalParameters(additionalParameters)
+				.attributes(attributes)
 				.build();
 
 		OAuth2AuthorizationRequest authorizationRequestCopy =
@@ -288,6 +289,22 @@ public class OAuth2AuthorizationRequestTests {
 		assertThat(authorizationRequestCopy.getScopes()).isEqualTo(authorizationRequest.getScopes());
 		assertThat(authorizationRequestCopy.getState()).isEqualTo(authorizationRequest.getState());
 		assertThat(authorizationRequestCopy.getAdditionalParameters()).isEqualTo(authorizationRequest.getAdditionalParameters());
+		assertThat(authorizationRequestCopy.getAttributes()).isEqualTo(authorizationRequest.getAttributes());
 		assertThat(authorizationRequestCopy.getAuthorizationRequestUri()).isEqualTo(authorizationRequest.getAuthorizationRequestUri());
+	}
+
+	@Test
+	public void buildWhenAuthorizationUriIncludesQueryParameterThenAuthorizationRequestUrlIncludesIt() {
+		OAuth2AuthorizationRequest authorizationRequest =
+				TestOAuth2AuthorizationRequests.request()
+						.authorizationUri(AUTHORIZATION_URI +
+								"?param1=value1&param2=value2").build();
+
+		assertThat(authorizationRequest.getAuthorizationRequestUri()).isNotNull();
+		assertThat(authorizationRequest.getAuthorizationRequestUri())
+				.isEqualTo("https://provider.com/oauth2/authorize?" +
+						"param1=value1&param2=value2&" +
+						"response_type=code&client_id=client-id&state=state&" +
+						"redirect_uri=https://example.com/authorize/oauth2/code/registration-id");
 	}
 }

@@ -15,9 +15,6 @@
  */
 package org.springframework.security.web.authentication;
 
-import java.io.IOException;
-
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -40,7 +37,7 @@ public final class HttpStatusEntryPoint implements AuthenticationEntryPoint {
 	/**
 	 * Creates a new instance.
 	 *
-	 * @param httpStatus the HttpSatus to set
+	 * @param httpStatus the HttpStatus to set
 	 */
 	public HttpStatusEntryPoint(HttpStatus httpStatus) {
 		Assert.notNull(httpStatus, "httpStatus cannot be null");
@@ -48,7 +45,7 @@ public final class HttpStatusEntryPoint implements AuthenticationEntryPoint {
 	}
 
 	public void commence(HttpServletRequest request, HttpServletResponse response,
-			AuthenticationException authException) throws IOException, ServletException {
+			AuthenticationException authException) {
 		response.setStatus(httpStatus.value());
 	}
 }

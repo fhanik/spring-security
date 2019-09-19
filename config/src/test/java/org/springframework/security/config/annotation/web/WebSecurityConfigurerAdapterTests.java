@@ -15,12 +15,22 @@
  */
 package org.springframework.security.config.annotation.web;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
@@ -48,14 +58,6 @@ import org.springframework.web.context.request.async.WebAsyncManager;
 import org.springframework.web.context.request.async.WebAsyncUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.ThrowableAssert.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,6 +77,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @PrepareForTest({WebAsyncManager.class})
 @RunWith(PowerMockRunner.class)
+@PowerMockIgnore({ "org.w3c.dom.*", "org.xml.sax.*", "org.apache.xerces.*", "javax.xml.parsers.*", "javax.xml.transform.*" })
 public class WebSecurityConfigurerAdapterTests {
 	@Rule
 	public final SpringTestRule spring = new SpringTestRule();
@@ -107,7 +110,7 @@ public class WebSecurityConfigurerAdapterTests {
 		}
 
 		@Override
-		protected void configure(HttpSecurity http) throws Exception {
+		protected void configure(HttpSecurity http) {
 		}
 	}
 
@@ -143,7 +146,7 @@ public class WebSecurityConfigurerAdapterTests {
 		}
 
 		@Override
-		protected void configure(HttpSecurity http) throws Exception {
+		protected void configure(HttpSecurity http) {
 		}
 	}
 
@@ -234,7 +237,7 @@ public class WebSecurityConfigurerAdapterTests {
 	}
 
 	@Test
-	public void loadConfigWhenCustomContentNegotiationStrategyBeanThenOverridesDefault() throws Exception {
+	public void loadConfigWhenCustomContentNegotiationStrategyBeanThenOverridesDefault() {
 		OverrideContentNegotiationStrategySharedObjectConfig.CONTENT_NEGOTIATION_STRATEGY_BEAN = mock(ContentNegotiationStrategy.class);
 		this.spring.register(OverrideContentNegotiationStrategySharedObjectConfig.class).autowire();
 
@@ -264,7 +267,7 @@ public class WebSecurityConfigurerAdapterTests {
 	}
 
 	@Test
-	public void loadConfigWhenDefaultContentNegotiationStrategyThenHeaderContentNegotiationStrategy() throws Exception {
+	public void loadConfigWhenDefaultContentNegotiationStrategyThenHeaderContentNegotiationStrategy() {
 		this.spring.register(ContentNegotiationStrategyDefaultSharedObjectConfig.class).autowire();
 
 		ContentNegotiationStrategyDefaultSharedObjectConfig securityConfig =
@@ -286,7 +289,7 @@ public class WebSecurityConfigurerAdapterTests {
 	}
 
 	@Test
-	public void loadConfigWhenUserDetailsServiceHasCircularReferenceThenStillLoads() throws Exception {
+	public void loadConfigWhenUserDetailsServiceHasCircularReferenceThenStillLoads() {
 		this.spring.register(RequiresUserDetailsServiceConfig.class, UserDetailsServiceConfig.class).autowire();
 
 		MyFilter myFilter = this.spring.getContext().getBean(MyFilter.class);
@@ -347,7 +350,7 @@ public class WebSecurityConfigurerAdapterTests {
 
 	// SEC-2274: WebSecurityConfigurer adds ApplicationContext as a shared object
 	@Test
-	public void loadConfigWhenSharedObjectsCreatedThenApplicationContextAdded() throws Exception {
+	public void loadConfigWhenSharedObjectsCreatedThenApplicationContextAdded() {
 		this.spring.register(ApplicationContextSharedObjectConfig.class).autowire();
 
 		ApplicationContextSharedObjectConfig securityConfig =
@@ -369,7 +372,7 @@ public class WebSecurityConfigurerAdapterTests {
 	}
 
 	@Test
-	public void loadConfigWhenCustomAuthenticationTrustResolverBeanThenOverridesDefault() throws Exception {
+	public void loadConfigWhenCustomAuthenticationTrustResolverBeanThenOverridesDefault() {
 		CustomTrustResolverConfig.AUTHENTICATION_TRUST_RESOLVER_BEAN = mock(AuthenticationTrustResolver.class);
 		this.spring.register(CustomTrustResolverConfig.class).autowire();
 
@@ -399,7 +402,7 @@ public class WebSecurityConfigurerAdapterTests {
 	}
 
 	@Test
-	public void compareOrderWebSecurityConfigurerAdapterWhenLowestOrderToDefaultOrderThenGreaterThanZero() throws Exception {
+	public void compareOrderWebSecurityConfigurerAdapterWhenLowestOrderToDefaultOrderThenGreaterThanZero() {
 		AnnotationAwareOrderComparator comparator = new AnnotationAwareOrderComparator();
 		assertThat(comparator.compare(
 			new LowestPriorityWebSecurityConfig(),

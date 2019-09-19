@@ -183,8 +183,8 @@ public final class ExpressionUrlAuthorizationConfigurer<H extends HttpSecurityBu
 
 	@Override
 	@SuppressWarnings("rawtypes")
-	final List<AccessDecisionVoter<? extends Object>> getDecisionVoters(H http) {
-		List<AccessDecisionVoter<? extends Object>> decisionVoters = new ArrayList<AccessDecisionVoter<? extends Object>>();
+	List<AccessDecisionVoter<?>> getDecisionVoters(H http) {
+		List<AccessDecisionVoter<?>> decisionVoters = new ArrayList<>();
 		WebExpressionVoter expressionVoter = new WebExpressionVoter();
 		expressionVoter.setExpressionHandler(getExpressionHandler(http));
 		decisionVoters.add(expressionVoter);
@@ -192,7 +192,7 @@ public final class ExpressionUrlAuthorizationConfigurer<H extends HttpSecurityBu
 	}
 
 	@Override
-	final ExpressionBasedFilterInvocationSecurityMetadataSource createMetadataSource(
+	ExpressionBasedFilterInvocationSecurityMetadataSource createMetadataSource(
 			H http) {
 		LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>> requestMap = REGISTRY
 				.createRequestMap();
@@ -371,7 +371,7 @@ public final class ExpressionUrlAuthorizationConfigurer<H extends HttpSecurityBu
 
 		/**
 		 * Specify that URLs requires a specific IP Address or <a href=
-		 * "http://forum.springsource.org/showthread.php?102783-How-to-use-hasIpAddress&p=343971#post343971"
+		 * "https://forum.spring.io/showthread.php?102783-How-to-use-hasIpAddress&p=343971#post343971"
 		 * >subnet</a>.
 		 *
 		 * @param ipaddressExpression the ipaddress (i.e. 192.168.1.79) or local subnet

@@ -16,11 +16,8 @@
 
 package org.springframework.security.oauth2.server.resource.web;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -41,10 +38,10 @@ import org.springframework.util.StringUtils;
  * {@code WWW-Authenticate} HTTP header.
  *
  * @author Vedran Pavic
- * @since 5.1
  * @see BearerTokenError
  * @see <a href="https://tools.ietf.org/html/rfc6750#section-3" target="_blank">RFC 6750 Section 3: The WWW-Authenticate
  * Response Header Field</a>
+ * @since 5.1
  */
 public final class BearerTokenAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
@@ -52,17 +49,16 @@ public final class BearerTokenAuthenticationEntryPoint implements Authentication
 
 	/**
 	 * Collect error details from the provided parameters and format according to
-	 * RFC 6750, specifically {@code error}, {@code error_description}, {@code error_uri}, and {@scope scope}.
+	 * RFC 6750, specifically {@code error}, {@code error_description}, {@code error_uri}, and {@code scope}.
 	 *
-	 * @param request that resulted in an <code>AuthenticationException</code>
-	 * @param response so that the user agent can begin authentication
+	 * @param request       that resulted in an <code>AuthenticationException</code>
+	 * @param response      so that the user agent can begin authentication
 	 * @param authException that caused the invocation
 	 */
 	@Override
 	public void commence(
 			HttpServletRequest request, HttpServletResponse response,
-			AuthenticationException authException)
-			throws IOException, ServletException {
+			AuthenticationException authException) {
 
 		HttpStatus status = HttpStatus.UNAUTHORIZED;
 
@@ -107,18 +103,27 @@ public final class BearerTokenAuthenticationEntryPoint implements Authentication
 	 *
 	 * @param realmName
 	 */
-	public final void setRealmName(String realmName) {
+	public void setRealmName(String realmName) {
 		this.realmName = realmName;
 	}
 
 	private static String computeWWWAuthenticateHeaderValue(Map<String, String> parameters) {
-		String wwwAuthenticate = "Bearer";
+		StringBuilder wwwAuthenticate = new StringBuilder();
+		wwwAuthenticate.append("Bearer");
+
 		if (!parameters.isEmpty()) {
-			wwwAuthenticate += parameters.entrySet().stream()
-					.map(attribute -> attribute.getKey() + "=\"" + attribute.getValue() + "\"")
-					.collect(Collectors.joining(", ", " ", ""));
+			wwwAuthenticate.append(" ");
+			int i = 0;
+			for (Map.Entry<String, String> entry : parameters.entrySet()) {
+				wwwAuthenticate.append(entry.getKey()).append("=\"").append(entry.getValue()).append("\"");
+
+				if (i != parameters.size() - 1) {
+					wwwAuthenticate.append(", ");
+				}
+				i++;
+			}
 		}
 
-		return wwwAuthenticate;
+		return wwwAuthenticate.toString();
 	}
 }

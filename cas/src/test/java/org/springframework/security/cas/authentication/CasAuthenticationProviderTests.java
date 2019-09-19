@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.*;
 
 import org.jasig.cas.client.validation.Assertion;
 import org.jasig.cas.client.validation.AssertionImpl;
-import org.jasig.cas.client.validation.TicketValidationException;
 import org.jasig.cas.client.validation.TicketValidator;
 import org.junit.*;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -414,12 +413,11 @@ public class CasAuthenticationProviderTests {
 	private class MockTicketValidator implements TicketValidator {
 		private boolean returnTicket;
 
-		public MockTicketValidator(boolean returnTicket) {
+		MockTicketValidator(boolean returnTicket) {
 			this.returnTicket = returnTicket;
 		}
 
-		public Assertion validate(final String ticket, final String service)
-				throws TicketValidationException {
+		public Assertion validate(final String ticket, final String service) {
 			if (returnTicket) {
 				return new AssertionImpl("rod");
 			}

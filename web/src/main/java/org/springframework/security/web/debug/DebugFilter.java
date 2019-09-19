@@ -55,7 +55,7 @@ public final class DebugFilter implements Filter {
 		this.fcp = fcp;
 	}
 
-	public final void doFilter(ServletRequest srvltRequest,
+	public void doFilter(ServletRequest srvltRequest,
 			ServletResponse srvltResponse, FilterChain filterChain)
 			throws ServletException, IOException {
 
@@ -143,7 +143,7 @@ public final class DebugFilter implements Filter {
 		return null;
 	}
 
-	public void init(FilterConfig filterConfig) throws ServletException {
+	public void init(FilterConfig filterConfig) {
 	}
 
 	public void destroy() {
@@ -153,7 +153,7 @@ public final class DebugFilter implements Filter {
 class DebugRequestWrapper extends HttpServletRequestWrapper {
 	private static final Logger logger = new Logger();
 
-	public DebugRequestWrapper(HttpServletRequest request) {
+	DebugRequestWrapper(HttpServletRequest request) {
 		super(request);
 	}
 

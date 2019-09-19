@@ -54,16 +54,16 @@ public class PortResolverImpl implements PortResolver {
 		String scheme = request.getScheme().toLowerCase();
 
 		if ("http".equals(scheme)) {
-			portLookup = portMapper.lookupHttpPort(Integer.valueOf(serverPort));
+			portLookup = portMapper.lookupHttpPort(serverPort);
 
 		}
 		else if ("https".equals(scheme)) {
-			portLookup = portMapper.lookupHttpsPort(Integer.valueOf(serverPort));
+			portLookup = portMapper.lookupHttpsPort(serverPort);
 		}
 
 		if (portLookup != null) {
 			// IE 6 bug
-			serverPort = portLookup.intValue();
+			serverPort = portLookup;
 		}
 
 		return serverPort;

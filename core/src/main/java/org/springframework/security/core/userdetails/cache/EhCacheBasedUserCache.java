@@ -28,7 +28,7 @@ import org.springframework.util.Assert;
 
 /**
  * Caches <code>User</code> objects using a Spring IoC defined <A
- * HREF="http://ehcache.sourceforge.net">EHCACHE</a>.
+ * HREF="https://www.ehcache.org/">EHCACHE</a>.
  *
  * @author Ben Alex
  */
@@ -46,7 +46,7 @@ public class EhCacheBasedUserCache implements UserCache, InitializingBean {
 	// ~ Methods
 	// ========================================================================================================
 
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		Assert.notNull(cache, "cache mandatory");
 	}
 

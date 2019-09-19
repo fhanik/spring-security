@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,14 @@
  */
 package org.springframework.security.config.annotation.web.configuration;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
 import javax.servlet.Filter;
 
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,6 +39,7 @@ import org.springframework.security.config.annotation.ObjectPostProcessor;
 import org.springframework.security.config.annotation.SecurityConfigurer;
 import org.springframework.security.config.annotation.web.WebSecurityConfigurer;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.crypto.RsaKeyConversionServicePostProcessor;
 import org.springframework.security.context.DelegatingApplicationListener;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.FilterInvocation;
@@ -62,7 +62,7 @@ import org.springframework.security.web.context.AbstractSecurityWebApplicationIn
  * @author Keesun Baik
  * @since 3.2
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAware {
 	private WebSecurity webSecurity;
 
@@ -108,11 +108,10 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 	 * Creates the {@link WebInvocationPrivilegeEvaluator} that is necessary for the JSP
 	 * tag support.
 	 * @return the {@link WebInvocationPrivilegeEvaluator}
-	 * @throws Exception
 	 */
 	@Bean
 	@DependsOn(AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
-	public WebInvocationPrivilegeEvaluator privilegeEvaluator() throws Exception {
+	public WebInvocationPrivilegeEvaluator privilegeEvaluator() {
 		return webSecurity.getPrivilegeEvaluator();
 	}
 
@@ -138,7 +137,7 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 			webSecurity.debug(debugEnabled);
 		}
 
-		Collections.sort(webSecurityConfigurers, AnnotationAwareOrderComparator.INSTANCE);
+		webSecurityConfigurers.sort(AnnotationAwareOrderComparator.INSTANCE);
 
 		Integer previousOrder = null;
 		Object previousConfig = null;
@@ -157,6 +156,11 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 			webSecurity.apply(webSecurityConfigurer);
 		}
 		this.webSecurityConfigurers = webSecurityConfigurers;
+	}
+
+	@Bean
+	public static BeanFactoryPostProcessor conversionServicePostProcessor() {
+		return new RsaKeyConversionServicePostProcessor();
 	}
 
 	@Bean

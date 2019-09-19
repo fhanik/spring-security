@@ -141,8 +141,8 @@ public class AuthenticationManagerBuilder
 	 *
 	 * <p>
 	 * When using with a persistent data store, it is best to add users external of
-	 * configuration using something like <a href="http://flywaydb.org/">Flyway</a> or <a
-	 * href="http://www.liquibase.org/">Liquibase</a> to create the schema and adding
+	 * configuration using something like <a href="https://flywaydb.org/">Flyway</a> or <a
+	 * href="https://www.liquibase.org/">Liquibase</a> to create the schema and adding
 	 * users to ensure these steps are only done once and that the optimal SQL is used.
 	 * </p>
 	 *
@@ -151,7 +151,7 @@ public class AuthenticationManagerBuilder
 	 * {@link #getDefaultUserDetailsService()} method. Note that additional
 	 * {@link UserDetailsService}'s may override this {@link UserDetailsService} as the
 	 * default. See the <a href=
-	 * "http://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#user-schema"
+	 * "https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#user-schema"
 	 * >User Schema</a> section of the reference for the default schema.
 	 * </p>
 	 *
@@ -228,7 +228,7 @@ public class AuthenticationManagerBuilder
 	}
 
 	@Override
-	protected ProviderManager performBuild() throws Exception {
+	protected ProviderManager performBuild() {
 		if (!isConfigured()) {
 			logger.debug("No authenticationProviders and no parentAuthenticationManager defined. Returning null.");
 			return null;
@@ -287,6 +287,6 @@ public class AuthenticationManagerBuilder
 	private <C extends UserDetailsAwareConfigurer<AuthenticationManagerBuilder, ? extends UserDetailsService>> C apply(
 			C configurer) throws Exception {
 		this.defaultUserDetailsService = configurer.getUserDetailsService();
-		return (C) super.apply(configurer);
+		return super.apply(configurer);
 	}
 }

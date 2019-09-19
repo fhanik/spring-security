@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.crypto.RsaKeyConversionServicePostProcessor;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.reactive.result.view.CsrfRequestDataValueProcessor;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -36,7 +38,7 @@ import org.springframework.web.reactive.result.view.AbstractView;
  * @author Rob Winch
  * @since 5.0
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 class WebFluxSecurityConfiguration {
 	public static final int WEB_FILTER_CHAIN_FILTER_ORDER = 0 - 100;
 
@@ -49,11 +51,15 @@ class WebFluxSecurityConfiguration {
 	private static final boolean isOAuth2Present = ClassUtils.isPresent(
 			REACTIVE_CLIENT_REGISTRATION_REPOSITORY_CLASSNAME, WebFluxSecurityConfiguration.class.getClassLoader());
 
-	@Autowired(required = false)
 	private List<SecurityWebFilterChain> securityWebFilterChains;
 
 	@Autowired
 	ApplicationContext context;
+
+	@Autowired(required = false)
+	void setSecurityWebFilterChains(List<SecurityWebFilterChain> securityWebFilterChains) {
+		this.securityWebFilterChains = securityWebFilterChains;
+	}
 
 	@Bean(SPRING_SECURITY_WEBFILTERCHAINFILTER_BEAN_NAME)
 	@Order(value = WEB_FILTER_CHAIN_FILTER_ORDER)
@@ -64,6 +70,11 @@ class WebFluxSecurityConfiguration {
 	@Bean(name = AbstractView.REQUEST_DATA_VALUE_PROCESSOR_BEAN_NAME)
 	public CsrfRequestDataValueProcessor requestDataValueProcessor() {
 		return new CsrfRequestDataValueProcessor();
+	}
+
+	@Bean
+	public static BeanFactoryPostProcessor conversionServicePostProcessor() {
+		return new RsaKeyConversionServicePostProcessor();
 	}
 
 	private List<SecurityWebFilterChain> getSecurityWebFilterChains() {

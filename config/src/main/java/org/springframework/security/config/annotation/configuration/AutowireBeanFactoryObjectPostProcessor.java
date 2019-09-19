@@ -44,7 +44,7 @@ final class AutowireBeanFactoryObjectPostProcessor
 	private final List<DisposableBean> disposableBeans = new ArrayList<>();
 	private final List<SmartInitializingSingleton> smartSingletons = new ArrayList<>();
 
-	public AutowireBeanFactoryObjectPostProcessor(
+	AutowireBeanFactoryObjectPostProcessor(
 			AutowireCapableBeanFactory autowireBeanFactory) {
 		Assert.notNull(autowireBeanFactory, "autowireBeanFactory cannot be null");
 		this.autowireBeanFactory = autowireBeanFactory;
@@ -97,7 +97,7 @@ final class AutowireBeanFactoryObjectPostProcessor
 	 *
 	 * @see org.springframework.beans.factory.DisposableBean#destroy()
 	 */
-	public void destroy() throws Exception {
+	public void destroy() {
 		for (DisposableBean disposable : this.disposableBeans) {
 			try {
 				disposable.destroy();

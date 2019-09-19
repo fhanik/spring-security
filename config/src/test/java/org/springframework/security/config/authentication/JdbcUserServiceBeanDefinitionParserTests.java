@@ -17,6 +17,7 @@ package org.springframework.security.config.authentication;
 
 import org.junit.After;
 import org.junit.Test;
+import org.springframework.security.authentication.CachingUserDetailsService;
 import org.w3c.dom.Element;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -60,7 +61,7 @@ public class JdbcUserServiceBeanDefinitionParserTests {
 	}
 
 	@Test
-	public void beanNameIsCorrect() throws Exception {
+	public void beanNameIsCorrect() {
 		assertThat(JdbcUserDetailsManager.class.getName()).isEqualTo(
 				new JdbcUserServiceBeanDefinitionParser()
 						.getBeanClassName(mock(Element.class)));

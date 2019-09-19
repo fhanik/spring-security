@@ -57,6 +57,8 @@ import java.util.Set;
  *     mapper.registerModule(new CoreJackson2Module());
  *     mapper.registerModule(new CasJackson2Module());
  *     mapper.registerModule(new WebJackson2Module());
+ *     mapper.registerModule(new WebServletJackson2Module());
+ *     mapper.registerModule(new WebServerJackson2Module());
  * </pre>
  *
  * @author Jitendra Singh.
@@ -68,8 +70,11 @@ public final class SecurityJackson2Modules {
 	private static final List<String> securityJackson2ModuleClasses = Arrays.asList(
 			"org.springframework.security.jackson2.CoreJackson2Module",
 			"org.springframework.security.cas.jackson2.CasJackson2Module",
-			"org.springframework.security.web.jackson2.WebJackson2Module"
+			"org.springframework.security.web.jackson2.WebJackson2Module",
+			"org.springframework.security.web.server.jackson2.WebServerJackson2Module"
 	);
+	private static final String webServletJackson2ModuleClass =
+			"org.springframework.security.web.jackson2.WebServletJackson2Module";
 
 	private SecurityJackson2Modules() {
 	}
@@ -109,12 +114,24 @@ public final class SecurityJackson2Modules {
 	public static List<Module> getModules(ClassLoader loader) {
 		List<Module> modules = new ArrayList<>();
 		for (String className : securityJackson2ModuleClasses) {
-			Module module = loadAndGetInstance(className, loader);
-			if (module != null) {
-				modules.add(module);
-			}
+			addToModulesList(loader, modules, className);
+		}
+		if (ClassUtils.isPresent("javax.servlet.http.Cookie", loader)) {
+			addToModulesList(loader, modules, webServletJackson2ModuleClass);
 		}
 		return modules;
+	}
+
+	/**
+	 * @param loader    the ClassLoader to use
+	 * @param modules   list of the modules to add
+	 * @param className name of the class to instantiate
+	 */
+	private static void addToModulesList(ClassLoader loader, List<Module> modules, String className) {
+		Module module = loadAndGetInstance(className, loader);
+		if (module != null) {
+			modules.add(module);
+		}
 	}
 
 	/**
@@ -135,7 +152,7 @@ public final class SecurityJackson2Modules {
 	 */
 	static class WhitelistTypeResolverBuilder extends ObjectMapper.DefaultTypeResolverBuilder {
 
-		public WhitelistTypeResolverBuilder(ObjectMapper.DefaultTyping defaultTyping) {
+		WhitelistTypeResolverBuilder(ObjectMapper.DefaultTyping defaultTyping) {
 			super(defaultTyping);
 		}
 

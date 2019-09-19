@@ -42,7 +42,7 @@ class InitializeAuthenticationProviderBeanManagerConfigurer
 	/**
 	 * @param context the ApplicationContext to look up beans.
 	 */
-	public InitializeAuthenticationProviderBeanManagerConfigurer(
+	InitializeAuthenticationProviderBeanManagerConfigurer(
 			ApplicationContext context) {
 		this.context = context;
 	}
@@ -55,7 +55,7 @@ class InitializeAuthenticationProviderBeanManagerConfigurer
 	class InitializeUserDetailsManagerConfigurer
 			extends GlobalAuthenticationConfigurerAdapter {
 		@Override
-		public void configure(AuthenticationManagerBuilder auth) throws Exception {
+		public void configure(AuthenticationManagerBuilder auth) {
 			if (auth.isConfigured()) {
 				return;
 			}

@@ -43,13 +43,21 @@ import java.util.regex.Pattern;
  */
 public class ServerBearerTokenAuthenticationConverter
 		implements ServerAuthenticationConverter {
-	private static final Pattern authorizationPattern = Pattern.compile("^Bearer (?<token>[a-zA-Z0-9-._~+/]+)=*$");
+	private static final Pattern authorizationPattern = Pattern.compile(
+		"^Bearer (?<token>[a-zA-Z0-9-._~+/]+)=*$",
+		Pattern.CASE_INSENSITIVE);
 
 	private boolean allowUriQueryParameter = false;
 
 	public Mono<Authentication> convert(ServerWebExchange exchange) {
-		return Mono.justOrEmpty(this.token(exchange.getRequest()))
-			.map(BearerTokenAuthenticationToken::new);
+		return Mono.justOrEmpty(token(exchange.getRequest()))
+			.map(token -> {
+				if (token.isEmpty()) {
+					BearerTokenError error = invalidTokenError();
+					throw new OAuth2AuthenticationException(error);
+				}
+				return new BearerTokenAuthenticationToken(token);
+			});
 	}
 
 	private String token(ServerHttpRequest request) {
@@ -85,20 +93,24 @@ public class ServerBearerTokenAuthenticationConverter
 
 	private static String resolveFromAuthorizationHeader(HttpHeaders headers) {
 		String authorization = headers.getFirst(HttpHeaders.AUTHORIZATION);
-		if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer")) {
+		if (StringUtils.startsWithIgnoreCase(authorization, "bearer")) {
 			Matcher matcher = authorizationPattern.matcher(authorization);
 
-			if ( !matcher.matches() ) {
-				BearerTokenError error = new BearerTokenError(BearerTokenErrorCodes.INVALID_TOKEN,
-						HttpStatus.BAD_REQUEST,
-						"Bearer token is malformed",
-						"https://tools.ietf.org/html/rfc6750#section-3.1");
+			if (!matcher.matches() ) {
+				BearerTokenError error = invalidTokenError();
 				throw new OAuth2AuthenticationException(error);
 			}
 
 			return matcher.group("token");
 		}
 		return null;
+	}
+
+	private static BearerTokenError invalidTokenError() {
+		return new BearerTokenError(BearerTokenErrorCodes.INVALID_TOKEN,
+							HttpStatus.UNAUTHORIZED,
+							"Bearer token is malformed",
+							"https://tools.ietf.org/html/rfc6750#section-3.1");
 	}
 
 	private boolean isParameterTokenSupportedForRequest(ServerHttpRequest request) {

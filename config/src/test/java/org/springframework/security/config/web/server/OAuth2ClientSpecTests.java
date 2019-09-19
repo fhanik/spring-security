@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -182,6 +182,50 @@ public class OAuth2ClientSpecTests {
 				.oauth2Client()
 					.authenticationConverter(this.authenticationConverter)
 					.authenticationManager(this.manager);
+			return http.build();
+		}
+	}
+
+	@Test
+	public void oauth2ClientWhenCustomObjectsInLambdaThenUsed() {
+		this.spring.register(ClientRegistrationConfig.class, OAuth2ClientInLambdaCustomConfig.class, AuthorizedClientController.class).autowire();
+
+		OAuth2ClientInLambdaCustomConfig config = this.spring.getContext().getBean(OAuth2ClientInLambdaCustomConfig.class);
+
+		ServerAuthenticationConverter converter = config.authenticationConverter;
+		ReactiveAuthenticationManager manager = config.manager;
+
+		OAuth2AuthorizationExchange exchange = TestOAuth2AuthorizationExchanges.success();
+		OAuth2AccessToken accessToken = TestOAuth2AccessTokens.noScopes();
+
+		OAuth2AuthorizationCodeAuthenticationToken result = new OAuth2AuthorizationCodeAuthenticationToken(this.registration, exchange, accessToken);
+
+		when(converter.convert(any())).thenReturn(Mono.just(new TestingAuthenticationToken("a", "b", "c")));
+		when(manager.authenticate(any())).thenReturn(Mono.just(result));
+
+		this.client.get()
+				.uri("/authorize/oauth2/code/registration-id")
+				.exchange()
+				.expectStatus().is3xxRedirection();
+
+		verify(converter).convert(any());
+		verify(manager).authenticate(any());
+	}
+
+	@Configuration
+	static class OAuth2ClientInLambdaCustomConfig {
+		ReactiveAuthenticationManager manager = mock(ReactiveAuthenticationManager.class);
+
+		ServerAuthenticationConverter authenticationConverter = mock(ServerAuthenticationConverter.class);
+
+		@Bean
+		public SecurityWebFilterChain springSecurityFilter(ServerHttpSecurity http) {
+			http
+				.oauth2Client(oauth2Client ->
+					oauth2Client
+						.authenticationConverter(this.authenticationConverter)
+						.authenticationManager(this.manager)
+				);
 			return http.build();
 		}
 	}

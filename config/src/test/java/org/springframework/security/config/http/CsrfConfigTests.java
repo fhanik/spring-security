@@ -621,7 +621,7 @@ public class CsrfConfigTests {
 
 	static class CsrfCreatedResultMatcher implements ResultMatcher {
 		@Override
-		public void match(MvcResult result) throws Exception {
+		public void match(MvcResult result) {
 			MockHttpServletRequest request = result.getRequest();
 			CsrfToken token = WebTestUtils.getCsrfTokenRepository(request).loadToken(request);
 			assertThat(token).isNotNull();
@@ -631,7 +631,7 @@ public class CsrfConfigTests {
 	static class CsrfReturnedResultMatcher implements ResultMatcher {
 		ExceptionalFunction<MvcResult, String> token;
 
-		public CsrfReturnedResultMatcher(ExceptionalFunction<MvcResult, String> token) {
+		CsrfReturnedResultMatcher(ExceptionalFunction<MvcResult, String> token) {
 			this.token = token;
 		}
 

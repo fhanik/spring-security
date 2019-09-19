@@ -41,7 +41,7 @@ import org.springframework.security.crypto.keygen.KeyGenerators;
  * @author Keith Donald
  * @author Dave Syer
  */
-final class AesBytesEncryptor implements BytesEncryptor {
+public final class AesBytesEncryptor implements BytesEncryptor {
 
 	private final SecretKey secretKey;
 
@@ -65,7 +65,7 @@ final class AesBytesEncryptor implements BytesEncryptor {
 		private BytesKeyGenerator ivGenerator;
 		private String name;
 
-		private CipherAlgorithm(String name, BytesKeyGenerator ivGenerator) {
+		CipherAlgorithm(String name, BytesKeyGenerator ivGenerator) {
 			this.name = name;
 			this.ivGenerator = ivGenerator;
 		}

@@ -127,7 +127,7 @@ See the Javadoc for this class for more information.
 ===== Custom Voters
 Obviously, you can also implement a custom `AccessDecisionVoter` and you can put just about any access-control logic you want in it.
 It might be specific to your application (business-logic related) or it might implement some security administration logic.
-For example, you'll find a http://spring.io/blog/2009/01/03/spring-security-customization-part-2-adjusting-secured-session-in-real-time[blog article] on the Spring web site which describes how to use a voter to deny access in real-time to users whose accounts have been suspended.
+For example, you'll find a https://spring.io/blog/2009/01/03/spring-security-customization-part-2-adjusting-secured-session-in-real-time[blog article] on the Spring web site which describes how to use a voter to deny access in real-time to users whose accounts have been suspended.
 
 
 [[authz-after-invocation-handling]]
@@ -183,7 +183,7 @@ A typical configuration might look like this:
 ----
 
 Here we have four roles in a hierarchy `ROLE_ADMIN => ROLE_STAFF => ROLE_USER => ROLE_GUEST`.
-A user who is authenticated with `ROLE_ADMIN`, will behave as if they have all four roles when security constraints are evaluated against an `AccessDecisionManager` cconfigured with the above `RoleHierarchyVoter`.
+A user who is authenticated with `ROLE_ADMIN`, will behave as if they have all four roles when security constraints are evaluated against an `AccessDecisionManager` configured with the above `RoleHierarchyVoter`.
 The `>` symbol can be thought of as meaning "includes".
 
 Role hierarchies offer a convenient means of simplifying the access-control configuration data for your application and/or reducing the number of authorities which you need to assign to a user.

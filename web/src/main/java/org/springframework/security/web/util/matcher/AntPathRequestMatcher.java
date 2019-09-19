@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ import org.springframework.web.util.UrlPathHelper;
  *
  * @author Luke Taylor
  * @author Rob Winch
+ * @author Eddú Meléndez
  * @since 3.1
  *
  * @see org.springframework.util.AntPathMatcher
@@ -181,12 +182,18 @@ public final class AntPathRequestMatcher
 	}
 
 	@Override
+	@Deprecated
 	public Map<String, String> extractUriTemplateVariables(HttpServletRequest request) {
+		return matcher(request).getVariables();
+	}
+
+	@Override
+	public MatchResult matcher(HttpServletRequest request) {
 		if (this.matcher == null || !matches(request)) {
-			return Collections.emptyMap();
+			return MatchResult.notMatch();
 		}
 		String url = getRequestPath(request);
-		return this.matcher.extractUriTemplateVariables(url);
+		return MatchResult.match(this.matcher.extractUriTemplateVariables(url));
 	}
 
 	private String getRequestPath(HttpServletRequest request) {
@@ -220,11 +227,10 @@ public final class AntPathRequestMatcher
 
 	@Override
 	public int hashCode() {
-		int code = 31 ^ this.pattern.hashCode();
-		if (this.httpMethod != null) {
-			code ^= this.httpMethod.hashCode();
-		}
-		return code;
+		int result = this.pattern != null ? this.pattern.hashCode() : 0;
+		result = 31 * result + (this.httpMethod != null ? this.httpMethod.hashCode() : 0);
+		result = 31 * result + (this.caseSensitive ? 1231 : 1237);
+		return result;
 	}
 
 	@Override
@@ -259,7 +265,7 @@ public final class AntPathRequestMatcher
 		return null;
 	}
 
-	private static interface Matcher {
+	private interface Matcher {
 		boolean matches(String path);
 
 		Map<String, String> extractUriTemplateVariables(String path);

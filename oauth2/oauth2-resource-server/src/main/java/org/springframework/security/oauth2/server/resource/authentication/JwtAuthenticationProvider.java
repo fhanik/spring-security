@@ -41,7 +41,7 @@ import org.springframework.util.Assert;
  * <p>
  * <p>
  * This {@link AuthenticationProvider} is responsible for decoding and verifying a {@link Jwt}-encoded access token,
- * returning its claims set as part of the {@see Authentication} statement.
+ * returning its claims set as part of the {@link Authentication} statement.
  * <p>
  * <p>
  * Scopes are translated into {@link GrantedAuthority}s according to the following algorithm:
@@ -68,7 +68,6 @@ public final class JwtAuthenticationProvider implements AuthenticationProvider {
 
 	public JwtAuthenticationProvider(JwtDecoder jwtDecoder) {
 		Assert.notNull(jwtDecoder, "jwtDecoder cannot be null");
-
 		this.jwtDecoder = jwtDecoder;
 	}
 

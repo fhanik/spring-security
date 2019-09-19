@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
 package sample;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * @author Rob Winch
@@ -29,14 +32,18 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SecurityConfig {
 
 	@Bean
-	SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) throws Exception {
+	SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
 		http
-			.authorizeExchange()
-				.pathMatchers("/message/**").hasAuthority("SCOPE_message:read")
-				.anyExchange().authenticated()
-				.and()
-			.oauth2ResourceServer()
-				.jwt();
+			.authorizeExchange(exchanges ->
+				exchanges
+					.pathMatchers(HttpMethod.GET, "/message/**").hasAuthority("SCOPE_message:read")
+					.pathMatchers(HttpMethod.POST, "/message/**").hasAuthority("SCOPE_message:write")
+					.anyExchange().authenticated()
+			)
+			.oauth2ResourceServer(oauth2ResourceServer ->
+				oauth2ResourceServer
+					.jwt(withDefaults())
+			);
 		return http.build();
 	}
 }

@@ -15,8 +15,8 @@
  */
 package org.springframework.security.config.http;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyObject;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -61,7 +61,7 @@ public class DefaultFilterChainValidatorTests {
 	private FilterSecurityInterceptor fsi;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		AnonymousAuthenticationFilter aaf = new AnonymousAuthenticationFilter("anonymous");
 		fsi = new FilterSecurityInterceptor();
 		fsi.setAccessDecisionManager(accessDecisionManager);

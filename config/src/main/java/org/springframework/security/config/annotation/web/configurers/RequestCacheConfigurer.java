@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.RequestCacheAwareFilter;
 import org.springframework.security.web.util.matcher.AndRequestMatcher;
@@ -88,12 +89,18 @@ public final class RequestCacheConfigurer<H extends HttpSecurityBuilder<H>> exte
 	}
 
 	@Override
-	public void init(H http) throws Exception {
+	public H disable() {
+		getBuilder().setSharedObject(RequestCache.class, new NullRequestCache());
+		return super.disable();
+	}
+
+	@Override
+	public void init(H http) {
 		http.setSharedObject(RequestCache.class, getRequestCache(http));
 	}
 
 	@Override
-	public void configure(H http) throws Exception {
+	public void configure(H http) {
 		RequestCache requestCache = getRequestCache(http);
 		RequestCacheAwareFilter requestCacheFilter = new RequestCacheAwareFilter(
 				requestCache);
@@ -135,21 +142,11 @@ public final class RequestCacheConfigurer<H extends HttpSecurityBuilder<H>> exte
 			return null;
 		}
 	}
+
 	@SuppressWarnings("unchecked")
 	private RequestMatcher createDefaultSavedRequestMatcher(H http) {
-		ContentNegotiationStrategy contentNegotiationStrategy = http
-				.getSharedObject(ContentNegotiationStrategy.class);
-		if (contentNegotiationStrategy == null) {
-			contentNegotiationStrategy = new HeaderContentNegotiationStrategy();
-		}
-
 		RequestMatcher notFavIcon = new NegatedRequestMatcher(new AntPathRequestMatcher(
 				"/**/favicon.*"));
-
-		MediaTypeRequestMatcher jsonRequest = new MediaTypeRequestMatcher(
-				contentNegotiationStrategy, MediaType.APPLICATION_JSON);
-		jsonRequest.setIgnoredMediaTypes(Collections.singleton(MediaType.ALL));
-		RequestMatcher notJson = new NegatedRequestMatcher(jsonRequest);
 
 		RequestMatcher notXRequestedWith = new NegatedRequestMatcher(
 				new RequestHeaderRequestMatcher("X-Requested-With", "XMLHttpRequest"));
@@ -162,9 +159,21 @@ public final class RequestCacheConfigurer<H extends HttpSecurityBuilder<H>> exte
 			matchers.add(0, getRequests);
 		}
 		matchers.add(notFavIcon);
-		matchers.add(notJson);
+		matchers.add(notMatchingMediaType(http, MediaType.APPLICATION_JSON));
 		matchers.add(notXRequestedWith);
+		matchers.add(notMatchingMediaType(http, MediaType.MULTIPART_FORM_DATA));
 
 		return new AndRequestMatcher(matchers);
+	}
+
+	private RequestMatcher notMatchingMediaType(H http, MediaType mediaType) {
+		ContentNegotiationStrategy contentNegotiationStrategy = http.getSharedObject(ContentNegotiationStrategy.class);
+		if (contentNegotiationStrategy == null) {
+			contentNegotiationStrategy = new HeaderContentNegotiationStrategy();
+		}
+
+		MediaTypeRequestMatcher mediaRequest = new MediaTypeRequestMatcher(contentNegotiationStrategy, mediaType);
+		mediaRequest.setIgnoredMediaTypes(Collections.singleton(MediaType.ALL));
+		return new NegatedRequestMatcher(mediaRequest);
 	}
 }

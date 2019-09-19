@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -484,11 +484,14 @@ public final class ClientRegistration implements Serializable {
 			Assert.notNull(this.authorizationGrantType, "authorizationGrantType cannot be null");
 			if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(this.authorizationGrantType)) {
 				this.validateClientCredentialsGrantType();
+			} else if (AuthorizationGrantType.PASSWORD.equals(this.authorizationGrantType)) {
+				this.validatePasswordGrantType();
 			} else if (AuthorizationGrantType.IMPLICIT.equals(this.authorizationGrantType)) {
 				this.validateImplicitGrantType();
-			} else {
+			} else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(this.authorizationGrantType)) {
 				this.validateAuthorizationCodeGrantType();
 			}
+			this.validateScopes();
 			return this.create();
 		}
 
@@ -499,6 +502,11 @@ public final class ClientRegistration implements Serializable {
 			clientRegistration.clientId = this.clientId;
 			clientRegistration.clientSecret = StringUtils.hasText(this.clientSecret) ? this.clientSecret : "";
 			clientRegistration.clientAuthenticationMethod = this.clientAuthenticationMethod;
+			if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(this.authorizationGrantType) &&
+					!StringUtils.hasText(this.clientSecret)) {
+				clientRegistration.clientAuthenticationMethod = ClientAuthenticationMethod.NONE;
+			}
+
 			clientRegistration.authorizationGrantType = this.authorizationGrantType;
 			clientRegistration.redirectUriTemplate = this.redirectUriTemplate;
 			clientRegistration.scopes = this.scopes;
@@ -544,6 +552,36 @@ public final class ClientRegistration implements Serializable {
 			Assert.hasText(this.registrationId, "registrationId cannot be empty");
 			Assert.hasText(this.clientId, "clientId cannot be empty");
 			Assert.hasText(this.tokenUri, "tokenUri cannot be empty");
+		}
+
+		private void validatePasswordGrantType() {
+			Assert.isTrue(AuthorizationGrantType.PASSWORD.equals(this.authorizationGrantType),
+					() -> "authorizationGrantType must be " + AuthorizationGrantType.PASSWORD.getValue());
+			Assert.hasText(this.registrationId, "registrationId cannot be empty");
+			Assert.hasText(this.clientId, "clientId cannot be empty");
+			Assert.hasText(this.tokenUri, "tokenUri cannot be empty");
+		}
+
+		private void validateScopes() {
+			if (this.scopes == null) {
+				return;
+			}
+
+			for (String scope : this.scopes) {
+				Assert.isTrue(validateScope(scope), "scope \"" + scope + "\" contains invalid characters");
+			}
+		}
+
+		private static boolean validateScope(String scope) {
+			return scope == null ||
+					scope.chars().allMatch(c ->
+							withinTheRangeOf(c, 0x21, 0x21) ||
+							withinTheRangeOf(c, 0x23, 0x5B) ||
+							withinTheRangeOf(c, 0x5D, 0x7E));
+		}
+
+		private static boolean withinTheRangeOf(int c, int min, int max) {
+			return c >= min && c <= max;
 		}
 	}
 }

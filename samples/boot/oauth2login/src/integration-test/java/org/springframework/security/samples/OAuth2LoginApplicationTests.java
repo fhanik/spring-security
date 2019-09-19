@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -291,7 +291,7 @@ public class OAuth2LoginApplicationTests {
 		assertThat(errorElement.asText()).contains("invalid_redirect_uri_parameter");
 	}
 
-	private void assertLoginPage(HtmlPage page) throws Exception {
+	private void assertLoginPage(HtmlPage page) {
 		assertThat(page.getTitleText()).isEqualTo("Please sign in");
 
 		int expectedClients = 4;
@@ -322,7 +322,7 @@ public class OAuth2LoginApplicationTests {
 		}
 	}
 
-	private void assertIndexPage(HtmlPage page) throws Exception {
+	private void assertIndexPage(HtmlPage page) {
 		assertThat(page.getTitleText()).isEqualTo("Spring Security - OAuth 2.0 Login");
 
 		DomNodeList<HtmlElement> divElements = page.getBody().getElementsByTagName("div");
@@ -358,15 +358,21 @@ public class OAuth2LoginApplicationTests {
 		@Override
 		protected void configure(HttpSecurity http) throws Exception {
 			http
-				.authorizeRequests()
-					.anyRequest().authenticated()
-					.and()
-				.oauth2Login()
-					.tokenEndpoint()
-						.accessTokenResponseClient(this.mockAccessTokenResponseClient())
-						.and()
-					.userInfoEndpoint()
-						.userService(this.mockUserService());
+				.authorizeRequests(authorizeRequests ->
+					authorizeRequests
+						.anyRequest().authenticated()
+				)
+				.oauth2Login(oauth2Login ->
+					oauth2Login
+						.tokenEndpoint(tokenEndpoint ->
+							tokenEndpoint
+								.accessTokenResponseClient(this.mockAccessTokenResponseClient())
+						)
+						.userInfoEndpoint(userInfoEndpoint ->
+							userInfoEndpoint
+								.userService(this.mockUserService())
+						)
+				);
 		}
 		// @formatter:on
 

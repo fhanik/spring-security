@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContext;
@@ -32,6 +33,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.util.Assert;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -51,7 +53,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * @see JwtAuthenticationProvider
  */
 public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
-	private final AuthenticationManager authenticationManager;
+	private final AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver;
 
 	private final AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource =
 			new WebAuthenticationDetailsSource();
@@ -60,13 +62,27 @@ public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter 
 
 	private AuthenticationEntryPoint authenticationEntryPoint = new BearerTokenAuthenticationEntryPoint();
 
+	private AuthenticationFailureHandler authenticationFailureHandler = (request, response, exception) ->
+		authenticationEntryPoint.commence(request, response, exception);
+
+	/**
+	 * Construct a {@code BearerTokenAuthenticationFilter} using the provided parameter(s)
+	 * @param authenticationManagerResolver
+	 */
+	public BearerTokenAuthenticationFilter
+			(AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver) {
+
+		Assert.notNull(authenticationManagerResolver, "authenticationManagerResolver cannot be null");
+		this.authenticationManagerResolver = authenticationManagerResolver;
+	}
+
 	/**
 	 * Construct a {@code BearerTokenAuthenticationFilter} using the provided parameter(s)
 	 * @param authenticationManager
 	 */
 	public BearerTokenAuthenticationFilter(AuthenticationManager authenticationManager) {
 		Assert.notNull(authenticationManager, "authenticationManager cannot be null");
-		this.authenticationManager = authenticationManager;
+		this.authenticationManagerResolver = request -> authenticationManager;
 	}
 
 	/**
@@ -104,7 +120,8 @@ public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter 
 		authenticationRequest.setDetails(this.authenticationDetailsSource.buildDetails(request));
 
 		try {
-			Authentication authenticationResult = this.authenticationManager.authenticate(authenticationRequest);
+			AuthenticationManager authenticationManager = this.authenticationManagerResolver.resolve(request);
+			Authentication authenticationResult = authenticationManager.authenticate(authenticationRequest);
 
 			SecurityContext context = SecurityContextHolder.createEmptyContext();
 			context.setAuthentication(authenticationResult);
@@ -115,10 +132,10 @@ public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter 
 			SecurityContextHolder.clearContext();
 
 			if (debug) {
-				this.logger.debug("Authentication request for failed: " + failed);
+				this.logger.debug("Authentication request for failed!", failed);
 			}
 
-			this.authenticationEntryPoint.commence(request, response, failed);
+			this.authenticationFailureHandler.onAuthenticationFailure(request, response, failed);
 		}
 	}
 
@@ -126,7 +143,7 @@ public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter 
 	 * Set the {@link BearerTokenResolver} to use. Defaults to {@link DefaultBearerTokenResolver}.
 	 * @param bearerTokenResolver the {@code BearerTokenResolver} to use
 	 */
-	public final void setBearerTokenResolver(BearerTokenResolver bearerTokenResolver) {
+	public void setBearerTokenResolver(BearerTokenResolver bearerTokenResolver) {
 		Assert.notNull(bearerTokenResolver, "bearerTokenResolver cannot be null");
 		this.bearerTokenResolver = bearerTokenResolver;
 	}
@@ -135,9 +152,18 @@ public final class BearerTokenAuthenticationFilter extends OncePerRequestFilter 
 	 * Set the {@link AuthenticationEntryPoint} to use. Defaults to {@link BearerTokenAuthenticationEntryPoint}.
 	 * @param authenticationEntryPoint the {@code AuthenticationEntryPoint} to use
 	 */
-	public final void setAuthenticationEntryPoint(final AuthenticationEntryPoint authenticationEntryPoint) {
+	public void setAuthenticationEntryPoint(final AuthenticationEntryPoint authenticationEntryPoint) {
 		Assert.notNull(authenticationEntryPoint, "authenticationEntryPoint cannot be null");
 		this.authenticationEntryPoint = authenticationEntryPoint;
 	}
 
+	/**
+	 * Set the {@link AuthenticationFailureHandler} to use. Default implementation invokes {@link AuthenticationEntryPoint}.
+	 * @param authenticationFailureHandler the {@code AuthenticationFailureHandler} to use
+	 * @since 5.2
+	 */
+	public void setAuthenticationFailureHandler(final AuthenticationFailureHandler authenticationFailureHandler) {
+		Assert.notNull(authenticationFailureHandler, "authenticationFailureHandler cannot be null");
+		this.authenticationFailureHandler = authenticationFailureHandler;
+	}
 }

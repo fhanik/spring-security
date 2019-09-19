@@ -48,11 +48,11 @@ class MethodSecurityEvaluationContext extends StandardEvaluationContext {
 	 * for each instance. Use the constructor which takes the resolver, as an argument
 	 * thus allowing for caching.
 	 */
-	public MethodSecurityEvaluationContext(Authentication user, MethodInvocation mi) {
+	MethodSecurityEvaluationContext(Authentication user, MethodInvocation mi) {
 		this(user, mi, new DefaultSecurityParameterNameDiscoverer());
 	}
 
-	public MethodSecurityEvaluationContext(Authentication user, MethodInvocation mi,
+	MethodSecurityEvaluationContext(Authentication user, MethodInvocation mi,
 			ParameterNameDiscoverer parameterNameDiscoverer) {
 		this.mi = mi;
 		this.parameterNameDiscoverer = parameterNameDiscoverer;
@@ -112,7 +112,9 @@ class MethodSecurityEvaluationContext extends StandardEvaluationContext {
 		}
 
 		for (int i = 0; i < args.length; i++) {
-			super.setVariable(paramNames[i], args[i]);
+			if (paramNames[i] != null) {
+				setVariable(paramNames[i], args[i]);
+			}
 		}
 	}
 

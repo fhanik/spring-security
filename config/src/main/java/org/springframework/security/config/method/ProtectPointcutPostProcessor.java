@@ -62,13 +62,13 @@ final class ProtectPointcutPostProcessor implements BeanPostProcessor {
 	private static final Log logger = LogFactory
 			.getLog(ProtectPointcutPostProcessor.class);
 
-	private final Map<String, List<ConfigAttribute>> pointcutMap = new LinkedHashMap<String, List<ConfigAttribute>>();
+	private final Map<String, List<ConfigAttribute>> pointcutMap = new LinkedHashMap<>();
 	private final MapBasedMethodSecurityMetadataSource mapBasedMethodSecurityMetadataSource;
 	private final Set<PointcutExpression> pointCutExpressions = new LinkedHashSet<>();
 	private final PointcutParser parser;
 	private final Set<String> processedBeans = new HashSet<>();
 
-	public ProtectPointcutPostProcessor(
+	ProtectPointcutPostProcessor(
 			MapBasedMethodSecurityMetadataSource mapBasedMethodSecurityMetadataSource) {
 		Assert.notNull(mapBasedMethodSecurityMetadataSource,
 				"MapBasedMethodSecurityMetadataSource to populate is required");

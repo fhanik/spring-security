@@ -16,7 +16,6 @@
 package org.springframework.security.config.annotation;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.springframework.core.GenericTypeResolver;
@@ -111,7 +110,7 @@ public abstract class SecurityConfigurerAdapter<O, B extends SecurityBuilder<O>>
 	 */
 	private static final class CompositeObjectPostProcessor implements
 			ObjectPostProcessor<Object> {
-		private List<ObjectPostProcessor<? extends Object>> postProcessors = new ArrayList<ObjectPostProcessor<?>>();
+		private List<ObjectPostProcessor<?>> postProcessors = new ArrayList<>();
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		public Object postProcess(Object object) {
@@ -132,9 +131,9 @@ public abstract class SecurityConfigurerAdapter<O, B extends SecurityBuilder<O>>
 		 * @return true if the {@link ObjectPostProcessor} was added, else false
 		 */
 		private boolean addObjectPostProcessor(
-				ObjectPostProcessor<? extends Object> objectPostProcessor) {
+				ObjectPostProcessor<?> objectPostProcessor) {
 			boolean result = this.postProcessors.add(objectPostProcessor);
-			Collections.sort(postProcessors, AnnotationAwareOrderComparator.INSTANCE);
+			postProcessors.sort(AnnotationAwareOrderComparator.INSTANCE);
 			return result;
 		}
 	}

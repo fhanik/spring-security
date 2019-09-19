@@ -46,7 +46,7 @@ public class DefaultFilterInvocationSecurityMetadataSourceTests {
 	// ~ Methods
 	// ========================================================================================================
 	private void createFids(String pattern, String method) {
-		LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>> requestMap = new LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>>();
+		LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>> requestMap = new LinkedHashMap<>();
 		requestMap.put(new AntPathRequestMatcher(pattern, method), this.def);
 		this.fids = new DefaultFilterInvocationSecurityMetadataSource(requestMap);
 	}
@@ -133,8 +133,8 @@ public class DefaultFilterInvocationSecurityMetadataSourceTests {
 
 	// SEC-1236
 	@Test
-	public void mixingPatternsWithAndWithoutHttpMethodsIsSupported() throws Exception {
-		LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>> requestMap = new LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>>();
+	public void mixingPatternsWithAndWithoutHttpMethodsIsSupported() {
+		LinkedHashMap<RequestMatcher, Collection<ConfigAttribute>> requestMap = new LinkedHashMap<>();
 		Collection<ConfigAttribute> userAttrs = SecurityConfig.createList("A");
 
 		requestMap.put(new AntPathRequestMatcher("/user/**", null), userAttrs);

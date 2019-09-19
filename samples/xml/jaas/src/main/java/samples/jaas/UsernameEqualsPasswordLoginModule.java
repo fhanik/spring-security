@@ -45,12 +45,12 @@ public class UsernameEqualsPasswordLoginModule implements LoginModule {
 	// ========================================================================================================
 
 	@Override
-	public boolean abort() throws LoginException {
+	public boolean abort() {
 		return true;
 	}
 
 	@Override
-	public boolean commit() throws LoginException {
+	public boolean commit() {
 		return true;
 	}
 
@@ -87,14 +87,14 @@ public class UsernameEqualsPasswordLoginModule implements LoginModule {
 	}
 
 	@Override
-	public boolean logout() throws LoginException {
+	public boolean logout() {
 		return true;
 	}
 
 	private static class UsernamePrincipal implements Principal, Serializable {
 		private final String username;
 
-		public UsernamePrincipal(String username) {
+		UsernamePrincipal(String username) {
 			this.username = username;
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.springframework.security.web.authentication.logout.CookieClearingLogo
 import org.springframework.security.web.authentication.logout.DelegatingLogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessEventPublishingLogoutHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
@@ -60,6 +61,7 @@ import org.springframework.util.Assert;
  * No shared objects are used.
  *
  * @author Rob Winch
+ * @author Onur Kagan Ozcan
  * @since 3.2
  * @see RememberMeConfigurer
  */
@@ -85,8 +87,9 @@ public final class LogoutConfigurer<H extends HttpSecurityBuilder<H>> extends
 	}
 
 	/**
-	 * Adds a {@link LogoutHandler}. The {@link SecurityContextLogoutHandler} is added as
-	 * the last {@link LogoutHandler} by default.
+	 * Adds a {@link LogoutHandler}.
+	 * {@link SecurityContextLogoutHandler} and {@link LogoutSuccessEventPublishingLogoutHandler} are added as
+	 * last {@link LogoutHandler} instances by default.
 	 *
 	 * @param logoutHandler the {@link LogoutHandler} to add
 	 * @return the {@link LogoutConfigurer} for further customization
@@ -129,7 +132,7 @@ public final class LogoutConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 * <p>
 	 * It is considered best practice to use an HTTP POST on any action that changes state
 	 * (i.e. log out) to protect against <a
-	 * href="http://en.wikipedia.org/wiki/Cross-site_request_forgery">CSRF attacks</a>. If
+	 * href="https://en.wikipedia.org/wiki/Cross-site_request_forgery">CSRF attacks</a>. If
 	 * you really want to use an HTTP GET, you can use
 	 * <code>logoutRequestMatcher(new AntPathRequestMatcher(logoutUrl, "GET"));</code>
 	 * </p>
@@ -270,7 +273,7 @@ public final class LogoutConfigurer<H extends HttpSecurityBuilder<H>> extends
 	}
 
 	@Override
-	public void init(H http) throws Exception {
+	public void init(H http) {
 		if (permitAll) {
 			PermitAllSupport.permitAll(http, this.logoutSuccessUrl);
 			PermitAllSupport.permitAll(http, this.getLogoutRequestMatcher(http));
@@ -325,12 +328,12 @@ public final class LogoutConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * @param http the builder to use
 	 * @return the {@link LogoutFilter} to use.
-	 * @throws Exception
 	 */
-	private LogoutFilter createLogoutFilter(H http) throws Exception {
+	private LogoutFilter createLogoutFilter(H http) {
 		logoutHandlers.add(contextLogoutHandler);
+		logoutHandlers.add(postProcess(new LogoutSuccessEventPublishingLogoutHandler()));
 		LogoutHandler[] handlers = logoutHandlers
-				.toArray(new LogoutHandler[logoutHandlers.size()]);
+				.toArray(new LogoutHandler[0]);
 		LogoutFilter result = new LogoutFilter(getLogoutSuccessHandler(), handlers);
 		result.setLogoutRequestMatcher(getLogoutRequestMatcher(http));
 		result = postProcess(result);

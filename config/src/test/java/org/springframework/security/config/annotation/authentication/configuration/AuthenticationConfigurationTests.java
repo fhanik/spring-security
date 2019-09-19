@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.access.annotation.Secured;
@@ -33,6 +34,7 @@ import org.springframework.security.authentication.TestAuthentication;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.AlreadyBuiltException;
 import org.springframework.security.config.annotation.ObjectPostProcessor;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.configuration.ObjectPostProcessorConfiguration;
@@ -60,12 +62,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.startsWith;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 public class AuthenticationConfigurationTests {
 
@@ -206,7 +203,7 @@ public class AuthenticationConfigurationTests {
 				inits.add(getClass());
 			}
 
-			public void configure(AuthenticationManagerBuilder auth) throws Exception {
+			public void configure(AuthenticationManagerBuilder auth) {
 				configs.add(getClass());
 			}
 		}
@@ -259,7 +256,7 @@ public class AuthenticationConfigurationTests {
 
 	static class DefaultBootGlobalAuthenticationConfigurerAdapter extends DefaultOrderGlobalAuthenticationConfigurerAdapter {
 		@Override
-		public void configure(AuthenticationManagerBuilder auth) throws Exception {
+		public void configure(AuthenticationManagerBuilder auth) {
 			if (auth.isConfigured()) {
 				return;
 			}
@@ -480,7 +477,7 @@ public class AuthenticationConfigurationTests {
 	}
 
 	@Test
-	public void enableGlobalMethodSecurityWhenPreAuthorizeThenNoException() throws Exception {
+	public void enableGlobalMethodSecurityWhenPreAuthorizeThenNoException() {
 		this.spring.register(UsesPreAuthorizeMethodSecurityConfig.class, AuthenticationManagerBeanConfig.class).autowire();
 
 		// no exception
@@ -494,7 +491,7 @@ public class AuthenticationConfigurationTests {
 	}
 
 	@Test
-	public void enableGlobalMethodSecurityWhenPreAuthorizeThenUsesMethodSecurityService() throws Exception {
+	public void enableGlobalMethodSecurityWhenPreAuthorizeThenUsesMethodSecurityService() {
 		this.spring.register(ServicesConfig.class, UsesPreAuthorizeMethodSecurityConfig.class, AuthenticationManagerBeanConfig.class).autowire();
 
 		// no exception
@@ -505,5 +502,44 @@ public class AuthenticationConfigurationTests {
 	static class UsesServiceMethodSecurityConfig {
 		@Autowired
 		Service service;
+	}
+
+	@Test
+	public void getAuthenticationManagerBeanWhenMultipleDefinedAndOnePrimaryThenNoException() throws Exception {
+		this.spring.register(MultipleAuthenticationManagerBeanConfig.class).autowire();
+		this.spring.getContext().getBeanFactory().getBean(AuthenticationConfiguration.class).getAuthenticationManager();
+	}
+
+	@Configuration
+	@Import(AuthenticationConfiguration.class)
+	static class MultipleAuthenticationManagerBeanConfig {
+
+		@Bean
+		@Primary
+		public AuthenticationManager manager1() {
+			return mock(AuthenticationManager.class);
+		}
+
+		@Bean
+		public AuthenticationManager manager2() {
+			return mock(AuthenticationManager.class);
+		}
+
+	}
+
+	@Test
+	public void getAuthenticationManagerWhenAuthenticationConfigurationSubclassedThenBuildsUsingBean()
+			throws Exception {
+		this.spring.register(AuthenticationConfigurationSubclass.class).autowire();
+		AuthenticationManagerBuilder ap = this.spring.getContext().getBean(AuthenticationManagerBuilder.class);
+
+		this.spring.getContext().getBean(AuthenticationConfiguration.class).getAuthenticationManager();
+
+		assertThatThrownBy(ap::build)
+				.isInstanceOf(AlreadyBuiltException.class);
+	}
+
+	@Configuration
+	static class AuthenticationConfigurationSubclass extends AuthenticationConfiguration {
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,19 @@
  */
 package org.springframework.security.config.annotation.web.configurers.oauth2.client;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.BeanFactoryUtils;
+import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.ResolvableType;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
@@ -54,6 +63,7 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
@@ -63,16 +73,10 @@ import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * An {@link AbstractHttpConfigurer} for OAuth 2.0 Login,
@@ -199,6 +203,18 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 	}
 
 	/**
+	 * Configures the Authorization Server's Authorization Endpoint.
+	 *
+	 * @param authorizationEndpointCustomizer the {@link Customizer} to provide more options for
+	 * the {@link AuthorizationEndpointConfig}
+	 * @return the {@link OAuth2LoginConfigurer} for further customizations
+	 */
+	public OAuth2LoginConfigurer<B> authorizationEndpoint(Customizer<AuthorizationEndpointConfig> authorizationEndpointCustomizer) {
+		authorizationEndpointCustomizer.customize(this.authorizationEndpointConfig);
+		return this;
+	}
+
+	/**
 	 * Configuration options for the Authorization Server's Authorization Endpoint.
 	 */
 	public class AuthorizationEndpointConfig {
@@ -266,6 +282,19 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 	}
 
 	/**
+	 * Configures the Authorization Server's Token Endpoint.
+	 *
+	 * @param tokenEndpointCustomizer the {@link Customizer} to provide more options for
+	 * the {@link TokenEndpointConfig}
+	 * @return the {@link OAuth2LoginConfigurer} for further customizations
+	 * @throws Exception
+	 */
+	public OAuth2LoginConfigurer<B> tokenEndpoint(Customizer<TokenEndpointConfig> tokenEndpointCustomizer) {
+		tokenEndpointCustomizer.customize(this.tokenEndpointConfig);
+		return this;
+	}
+
+	/**
 	 * Configuration options for the Authorization Server's Token Endpoint.
 	 */
 	public class TokenEndpointConfig {
@@ -308,6 +337,18 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 	}
 
 	/**
+	 * Configures the Client's Redirection Endpoint.
+	 *
+	 * @param redirectionEndpointCustomizer the {@link Customizer} to provide more options for
+	 * the {@link RedirectionEndpointConfig}
+	 * @return the {@link OAuth2LoginConfigurer} for further customizations
+	 */
+	public OAuth2LoginConfigurer<B> redirectionEndpoint(Customizer<RedirectionEndpointConfig> redirectionEndpointCustomizer) {
+		redirectionEndpointCustomizer.customize(this.redirectionEndpointConfig);
+		return this;
+	}
+
+	/**
 	 * Configuration options for the Client's Redirection Endpoint.
 	 */
 	public class RedirectionEndpointConfig {
@@ -345,6 +386,18 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 	 */
 	public UserInfoEndpointConfig userInfoEndpoint() {
 		return this.userInfoEndpointConfig;
+	}
+
+	/**
+	 * Configures the Authorization Server's UserInfo Endpoint.
+	 *
+	 * @param userInfoEndpointCustomizer the {@link Customizer} to provide more options for
+	 * the {@link UserInfoEndpointConfig}
+	 * @return the {@link OAuth2LoginConfigurer} for further customizations
+	 */
+	public OAuth2LoginConfigurer<B> userInfoEndpoint(Customizer<UserInfoEndpointConfig> userInfoEndpointCustomizer) {
+		userInfoEndpointCustomizer.customize(this.userInfoEndpointConfig);
+		return this;
 	}
 
 	/**
@@ -453,18 +506,7 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 			accessTokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
 		}
 
-		OAuth2UserService<OAuth2UserRequest, OAuth2User> oauth2UserService = this.userInfoEndpointConfig.userService;
-		if (oauth2UserService == null) {
-			if (!this.userInfoEndpointConfig.customUserTypes.isEmpty()) {
-				List<OAuth2UserService<OAuth2UserRequest, OAuth2User>> userServices = new ArrayList<>();
-				userServices.add(new CustomUserTypesOAuth2UserService(this.userInfoEndpointConfig.customUserTypes));
-				userServices.add(new DefaultOAuth2UserService());
-				oauth2UserService = new DelegatingOAuth2UserService<>(userServices);
-			} else {
-				oauth2UserService = new DefaultOAuth2UserService();
-			}
-		}
-
+		OAuth2UserService<OAuth2UserRequest, OAuth2User> oauth2UserService = getOAuth2UserService();
 		OAuth2LoginAuthenticationProvider oauth2LoginAuthenticationProvider =
 			new OAuth2LoginAuthenticationProvider(accessTokenResponseClient, oauth2UserService);
 		GrantedAuthoritiesMapper userAuthoritiesMapper = this.getGrantedAuthoritiesMapper();
@@ -477,13 +519,13 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 			"org.springframework.security.oauth2.jwt.JwtDecoder", this.getClass().getClassLoader());
 
 		if (oidcAuthenticationProviderEnabled) {
-			OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService = this.userInfoEndpointConfig.oidcUserService;
-			if (oidcUserService == null) {
-				oidcUserService = new OidcUserService();
-			}
-
+			OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService = getOidcUserService();
 			OidcAuthorizationCodeAuthenticationProvider oidcAuthorizationCodeAuthenticationProvider =
 				new OidcAuthorizationCodeAuthenticationProvider(accessTokenResponseClient, oidcUserService);
+			JwtDecoderFactory<ClientRegistration> jwtDecoderFactory = this.getJwtDecoderFactoryBean();
+			if (jwtDecoderFactory != null) {
+				oidcAuthorizationCodeAuthenticationProvider.setJwtDecoderFactory(jwtDecoderFactory);
+			}
 			if (userAuthoritiesMapper != null) {
 				oidcAuthorizationCodeAuthenticationProvider.setAuthoritiesMapper(userAuthoritiesMapper);
 			}
@@ -537,6 +579,19 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 		return new AntPathRequestMatcher(loginProcessingUrl);
 	}
 
+	@SuppressWarnings("unchecked")
+	private JwtDecoderFactory<ClientRegistration> getJwtDecoderFactoryBean() {
+		ResolvableType type = ResolvableType.forClassWithGenerics(JwtDecoderFactory.class, ClientRegistration.class);
+		String[] names = this.getBuilder().getSharedObject(ApplicationContext.class).getBeanNamesForType(type);
+		if (names.length > 1) {
+			throw new NoUniqueBeanDefinitionException(type, names);
+		}
+		if (names.length == 1) {
+			return (JwtDecoderFactory<ClientRegistration>) this.getBuilder().getSharedObject(ApplicationContext.class).getBean(names[0]);
+		}
+		return null;
+	}
+
 	private GrantedAuthoritiesMapper getGrantedAuthoritiesMapper() {
 		GrantedAuthoritiesMapper grantedAuthoritiesMapper =
 				this.getBuilder().getSharedObject(GrantedAuthoritiesMapper.class);
@@ -555,6 +610,51 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 						this.getBuilder().getSharedObject(ApplicationContext.class),
 						GrantedAuthoritiesMapper.class);
 		return (!grantedAuthoritiesMapperMap.isEmpty() ? grantedAuthoritiesMapperMap.values().iterator().next() : null);
+	}
+
+	private OAuth2UserService<OidcUserRequest, OidcUser> getOidcUserService() {
+		if (this.userInfoEndpointConfig.oidcUserService != null) {
+			return this.userInfoEndpointConfig.oidcUserService;
+		}
+		ResolvableType type = ResolvableType.forClassWithGenerics(OAuth2UserService.class, OidcUserRequest.class, OidcUser.class);
+		OAuth2UserService<OidcUserRequest, OidcUser> bean = getBeanOrNull(type);
+		if (bean == null) {
+			return new OidcUserService();
+		}
+
+		return bean;
+	}
+
+	private OAuth2UserService<OAuth2UserRequest, OAuth2User> getOAuth2UserService() {
+		if (this.userInfoEndpointConfig.userService != null) {
+			return this.userInfoEndpointConfig.userService;
+		}
+		ResolvableType type = ResolvableType.forClassWithGenerics(OAuth2UserService.class, OAuth2UserRequest.class, OAuth2User.class);
+		OAuth2UserService<OAuth2UserRequest, OAuth2User> bean = getBeanOrNull(type);
+		if (bean == null) {
+			if (!this.userInfoEndpointConfig.customUserTypes.isEmpty()) {
+				List<OAuth2UserService<OAuth2UserRequest, OAuth2User>> userServices = new ArrayList<>();
+				userServices.add(new CustomUserTypesOAuth2UserService(this.userInfoEndpointConfig.customUserTypes));
+				userServices.add(new DefaultOAuth2UserService());
+				return new DelegatingOAuth2UserService<>(userServices);
+			} else {
+				return new DefaultOAuth2UserService();
+			}
+		}
+
+		return bean;
+	}
+
+	private <T> T getBeanOrNull(ResolvableType type) {
+		ApplicationContext context = getBuilder().getSharedObject(ApplicationContext.class);
+		if (context == null) {
+			return null;
+		}
+		String[] names =  context.getBeanNamesForType(type);
+		if (names.length == 1) {
+			return (T) context.getBean(names[0]);
+		}
+		return null;
 	}
 
 	private void initDefaultLoginFilter(B http) {
@@ -600,8 +700,11 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 		RequestMatcher defaultLoginPageMatcher = new AndRequestMatcher(
 				new OrRequestMatcher(loginPageMatcher, faviconMatcher), defaultEntryPointMatcher);
 
+		RequestMatcher notXRequestedWith = new NegatedRequestMatcher(
+				new RequestHeaderRequestMatcher("X-Requested-With", "XMLHttpRequest"));
+
 		LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-		entryPoints.put(new NegatedRequestMatcher(defaultLoginPageMatcher),
+		entryPoints.put(new AndRequestMatcher(notXRequestedWith, new NegatedRequestMatcher(defaultLoginPageMatcher)),
 				new LoginUrlAuthenticationEntryPoint(providerLoginPage));
 
 		DelegatingAuthenticationEntryPoint loginEntryPoint = new DelegatingAuthenticationEntryPoint(entryPoints);
@@ -617,7 +720,7 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 			OAuth2LoginAuthenticationToken authorizationCodeAuthentication =
 				(OAuth2LoginAuthenticationToken) authentication;
 
-			// Section 3.1.2.1 Authentication Request - http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+			// Section 3.1.2.1 Authentication Request - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 			// scope
 			// 		REQUIRED. OpenID Connect requests MUST contain the "openid" scope value.
 			if (authorizationCodeAuthentication.getAuthorizationExchange()

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,14 @@
  */
 package org.springframework.security.oauth2.client.oidc.userinfo;
 
+import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -23,19 +31,19 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.core.AuthenticationMethod;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.converter.ClaimTypeConverter;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -43,31 +51,25 @@ import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.oauth2.client.registration.TestClientRegistrations.clientRegistration;
+import static org.springframework.security.oauth2.core.TestOAuth2AccessTokens.noScopes;
+import static org.springframework.security.oauth2.core.TestOAuth2AccessTokens.scopes;
+import static org.springframework.security.oauth2.core.oidc.TestOidcIdTokens.idToken;
 
 /**
  * Tests for {@link OidcUserService}.
  *
  * @author Joe Grandja
  */
-@PowerMockIgnore({"okhttp3.*", "okio.Buffer"})
-@PrepareForTest(ClientRegistration.class)
-@RunWith(PowerMockRunner.class)
 public class OidcUserServiceTests {
-	private ClientRegistration clientRegistration;
-	private ClientRegistration.ProviderDetails providerDetails;
-	private ClientRegistration.ProviderDetails.UserInfoEndpoint userInfoEndpoint;
+	private ClientRegistration.Builder clientRegistrationBuilder;
 	private OAuth2AccessToken accessToken;
 	private OidcIdToken idToken;
 	private OidcUserService userService = new OidcUserService();
@@ -80,26 +82,17 @@ public class OidcUserServiceTests {
 	public void setup() throws Exception {
 		this.server = new MockWebServer();
 		this.server.start();
-		this.clientRegistration = mock(ClientRegistration.class);
-		this.providerDetails = mock(ClientRegistration.ProviderDetails.class);
-		this.userInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
-		when(this.clientRegistration.getProviderDetails()).thenReturn(this.providerDetails);
-		when(this.providerDetails.getUserInfoEndpoint()).thenReturn(this.userInfoEndpoint);
-		when(this.clientRegistration.getAuthorizationGrantType()).thenReturn(AuthorizationGrantType.AUTHORIZATION_CODE);
+		this.clientRegistrationBuilder = clientRegistration()
+				.userInfoUri(null)
+				.userInfoAuthenticationMethod(AuthenticationMethod.HEADER)
+				.userNameAttributeName(StandardClaimNames.SUB);
 
-		when(this.userInfoEndpoint.getAuthenticationMethod()).thenReturn(AuthenticationMethod.HEADER);
-		when(this.userInfoEndpoint.getUserNameAttributeName()).thenReturn(StandardClaimNames.SUB);
+		this.accessToken = scopes(OidcScopes.OPENID, OidcScopes.PROFILE);
 
-		this.accessToken = mock(OAuth2AccessToken.class);
-		Set<String> authorizedScopes = new LinkedHashSet<>(Arrays.asList(OidcScopes.OPENID, OidcScopes.PROFILE));
-		when(this.accessToken.getScopes()).thenReturn(authorizedScopes);
-
-		this.idToken = mock(OidcIdToken.class);
 		Map<String, Object> idTokenClaims = new HashMap<>();
 		idTokenClaims.put(IdTokenClaimNames.ISS, "https://provider.com");
 		idTokenClaims.put(IdTokenClaimNames.SUB, "subject1");
-		when(this.idToken.getClaims()).thenReturn(idTokenClaims);
-		when(this.idToken.getSubject()).thenReturn("subject1");
+		this.idToken = new OidcIdToken("access-token", Instant.MIN, Instant.MAX, idTokenClaims);
 
 		this.userService.setOauth2UserService(new DefaultOAuth2UserService());
 	}
@@ -110,9 +103,34 @@ public class OidcUserServiceTests {
 	}
 
 	@Test
+	public void createDefaultClaimTypeConvertersWhenCalledThenDefaultsAreCorrect() {
+		Map<String, Converter<Object, ?>> claimTypeConverters = OidcUserService.createDefaultClaimTypeConverters();
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.EMAIL_VERIFIED);
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.PHONE_NUMBER_VERIFIED);
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.UPDATED_AT);
+	}
+
+	@Test
 	public void setOauth2UserServiceWhenNullThenThrowIllegalArgumentException() {
 		assertThatThrownBy(() -> this.userService.setOauth2UserService(null))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setClaimTypeConverterFactoryWhenNullThenThrowIllegalArgumentException() {
+		assertThatThrownBy(() -> this.userService.setClaimTypeConverterFactory(null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setAccessibleScopesWhenNullThenThrowIllegalArgumentException() {
+		assertThatThrownBy(() -> this.userService.setAccessibleScopes(null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setAccessibleScopesWhenEmptyThenSet() {
+		this.userService.setAccessibleScopes(Collections.emptySet());
 	}
 
 	@Test
@@ -123,23 +141,95 @@ public class OidcUserServiceTests {
 
 	@Test
 	public void loadUserWhenUserInfoUriIsNullThenUserInfoEndpointNotRequested() {
-		when(this.userInfoEndpoint.getUri()).thenReturn(null);
-
 		OidcUser user = this.userService.loadUser(
-			new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+			new OidcUserRequest(this.clientRegistrationBuilder.build(), this.accessToken, this.idToken));
 		assertThat(user.getUserInfo()).isNull();
 	}
 
 	@Test
-	public void loadUserWhenAuthorizedScopesDoesNotContainUserInfoScopesThenUserInfoEndpointNotRequested() {
-		Set<String> authorizedScopes = new LinkedHashSet<>(Arrays.asList("scope1", "scope2"));
-		when(this.accessToken.getScopes()).thenReturn(authorizedScopes);
-
-		when(this.userInfoEndpoint.getUri()).thenReturn("http://provider.com/user");
+	public void loadUserWhenNonStandardScopesAuthorizedThenUserInfoEndpointNotRequested() {
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri("https://provider.com/user").build();
+		this.accessToken = scopes("scope1", "scope2");
 
 		OidcUser user = this.userService.loadUser(
-			new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+			new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 		assertThat(user.getUserInfo()).isNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenNonStandardScopesAuthorizedAndAccessibleScopesMatchThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		this.accessToken = scopes("scope1", "scope2");
+		this.userService.setAccessibleScopes(Collections.singleton("scope2"));
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenNonStandardScopesAuthorizedAndAccessibleScopesEmptyThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		this.accessToken = scopes("scope1", "scope2");
+		this.userService.setAccessibleScopes(Collections.emptySet());
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenStandardScopesAuthorizedThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
 	}
 
 	@Test
@@ -156,11 +246,11 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+			.userInfoUri(userInfoUri).build();
 
 		OidcUser user = this.userService.loadUser(
-			new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+			new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 
 		assertThat(user.getIdToken()).isNotNull();
 		assertThat(user.getUserInfo()).isNotNull();
@@ -174,7 +264,7 @@ public class OidcUserServiceTests {
 		assertThat(user.getUserInfo().getPreferredUsername()).isEqualTo("user1");
 		assertThat(user.getUserInfo().getEmail()).isEqualTo("user1@example.com");
 
-		assertThat(user.getAuthorities().size()).isEqualTo(1);
+		assertThat(user.getAuthorities().size()).isEqualTo(3);
 		assertThat(user.getAuthorities().iterator().next()).isInstanceOf(OidcUserAuthority.class);
 		OidcUserAuthority userAuthority = (OidcUserAuthority) user.getAuthorities().iterator().next();
 		assertThat(userAuthority.getAuthority()).isEqualTo("ROLE_USER");
@@ -196,11 +286,11 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.userInfoEndpoint.getUserNameAttributeName()).thenReturn(StandardClaimNames.EMAIL);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri)
+				.userNameAttributeName(StandardClaimNames.EMAIL).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 	}
 
 	@Test
@@ -215,10 +305,10 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 	}
 
 	@Test
@@ -238,10 +328,10 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 	}
 
 	@Test
@@ -253,10 +343,10 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 	}
 
 	@Test
@@ -264,12 +354,12 @@ public class OidcUserServiceTests {
 		this.exception.expect(OAuth2AuthenticationException.class);
 		this.exception.expectMessage(containsString("[invalid_user_info_response] An error occurred while attempting to retrieve the UserInfo Resource"));
 
-		String userInfoUri = "http://invalid-provider.com/user";
+		String userInfoUri = "https://invalid-provider.com/user";
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 	}
 
 	@Test
@@ -286,12 +376,12 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.userInfoEndpoint.getUserNameAttributeName()).thenReturn(StandardClaimNames.EMAIL);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri)
+				.userNameAttributeName(StandardClaimNames.EMAIL).build();
 
 		OidcUser user = this.userService.loadUser(
-			new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+			new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 
 		assertThat(user.getName()).isEqualTo("user1@example.com");
 	}
@@ -311,12 +401,12 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 		assertThat(this.server.takeRequest(1, TimeUnit.SECONDS).getHeader(HttpHeaders.ACCEPT))
-				.isEqualTo(MediaType.APPLICATION_JSON_UTF8_VALUE);
+				.isEqualTo(MediaType.APPLICATION_JSON_VALUE);
 	}
 
 	// gh-5500
@@ -334,14 +424,13 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.userInfoEndpoint.getAuthenticationMethod()).thenReturn(AuthenticationMethod.HEADER);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 		RecordedRequest request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo(HttpMethod.GET.name());
-		assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo(MediaType.APPLICATION_JSON_UTF8_VALUE);
+		assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
 		assertThat(request.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo("Bearer " + this.accessToken.getTokenValue());
 	}
 
@@ -360,16 +449,77 @@ public class OidcUserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.userInfoEndpoint.getAuthenticationMethod()).thenReturn(AuthenticationMethod.FORM);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri)
+				.userInfoAuthenticationMethod(AuthenticationMethod.FORM).build();
 
-		this.userService.loadUser(new OidcUserRequest(this.clientRegistration, this.accessToken, this.idToken));
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 		RecordedRequest request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo(HttpMethod.POST.name());
-		assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo(MediaType.APPLICATION_JSON_UTF8_VALUE);
+		assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
 		assertThat(request.getHeader(HttpHeaders.CONTENT_TYPE)).contains(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
 		assertThat(request.getBody().readUtf8()).isEqualTo("access_token=" + this.accessToken.getTokenValue());
+	}
+
+	@Test
+	public void loadUserWhenCustomClaimTypeConverterFactorySetThenApplied() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri)
+				.build();
+
+		Function<ClientRegistration, Converter<Map<String, Object>, Map<String, Object>>> customClaimTypeConverterFactory = mock(Function.class);
+		this.userService.setClaimTypeConverterFactory(customClaimTypeConverterFactory);
+
+		when(customClaimTypeConverterFactory.apply(same(clientRegistration)))
+				.thenReturn(new ClaimTypeConverter(OidcUserService.createDefaultClaimTypeConverters()));
+
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+
+		verify(customClaimTypeConverterFactory).apply(same(clientRegistration));
+	}
+
+	@Test
+	public void loadUserWhenTokenContainsScopesThenIndividualScopeAuthorities() {
+		Map<String, Object> body = new HashMap<>();
+		body.put("id", "id");
+		body.put("sub", "test-subject");
+		OidcUserService userService = new OidcUserService();
+		OidcUserRequest request = new OidcUserRequest(clientRegistration().build(),
+				scopes("message:read", "message:write"), idToken(body));
+		OidcUser user = userService.loadUser(request);
+
+		assertThat(user.getAuthorities()).hasSize(3);
+		Iterator<? extends GrantedAuthority> authorities = user.getAuthorities().iterator();
+		assertThat(authorities.next()).isInstanceOf(OidcUserAuthority.class);
+		assertThat(authorities.next()).isEqualTo(new SimpleGrantedAuthority("SCOPE_message:read"));
+		assertThat(authorities.next()).isEqualTo(new SimpleGrantedAuthority("SCOPE_message:write"));
+	}
+
+	@Test
+	public void loadUserWhenTokenDoesNotContainScopesThenNoScopeAuthorities() {
+		Map<String, Object> body = new HashMap<>();
+		body.put("id", "id");
+		body.put("sub", "test-subject");
+		OidcUserService userService = new OidcUserService();
+		OidcUserRequest request = new OidcUserRequest(clientRegistration().build(),
+				noScopes(), idToken(body));
+		OidcUser user = userService.loadUser(request);
+
+		assertThat(user.getAuthorities()).hasSize(1);
+		Iterator<? extends GrantedAuthority> authorities = user.getAuthorities().iterator();
+		assertThat(authorities.next()).isInstanceOf(OidcUserAuthority.class);
 	}
 
 	private MockResponse jsonResponse(String json) {

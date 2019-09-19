@@ -200,7 +200,8 @@ public abstract class WebSecurityConfigurerAdapter implements
 
 		AuthenticationManager authenticationManager = authenticationManager();
 		authenticationBuilder.parentAuthenticationManager(authenticationManager);
-		Map<Class<? extends Object>, Object> sharedObjects = createSharedObjects();
+		authenticationBuilder.authenticationEventPublisher(eventPublisher);
+		Map<Class<?>, Object> sharedObjects = createSharedObjects();
 
 		http = new HttpSecurity(objectPostProcessor, authenticationBuilder,
 				sharedObjects);
@@ -319,12 +320,10 @@ public abstract class WebSecurityConfigurerAdapter implements
 
 	public void init(final WebSecurity web) throws Exception {
 		final HttpSecurity http = getHttp();
-		web.addSecurityFilterChainBuilder(http).postBuildAction(new Runnable() {
-			public void run() {
-				FilterSecurityInterceptor securityInterceptor = http
-						.getSharedObject(FilterSecurityInterceptor.class);
-				web.securityInterceptor(securityInterceptor);
-			}
+		web.addSecurityFilterChainBuilder(http).postBuildAction(() -> {
+			FilterSecurityInterceptor securityInterceptor = http
+					.getSharedObject(FilterSecurityInterceptor.class);
+			web.securityInterceptor(securityInterceptor);
 		});
 	}
 
@@ -332,7 +331,7 @@ public abstract class WebSecurityConfigurerAdapter implements
 	 * Override this method to configure {@link WebSecurity}. For example, if you wish to
 	 * ignore certain requests.
 	 */
-	public void configure(WebSecurity web) throws Exception {
+	public void configure(WebSecurity web) {
 	}
 
 	/**
@@ -413,8 +412,8 @@ public abstract class WebSecurityConfigurerAdapter implements
 	 *
 	 * @return the shared Objects
 	 */
-	private Map<Class<? extends Object>, Object> createSharedObjects() {
-		Map<Class<? extends Object>, Object> sharedObjects = new HashMap<Class<? extends Object>, Object>();
+	private Map<Class<?>, Object> createSharedObjects() {
+		Map<Class<?>, Object> sharedObjects = new HashMap<>();
 		sharedObjects.putAll(localConfigureAuthenticationBldr.getSharedObjects());
 		sharedObjects.put(UserDetailsService.class, userDetailsService());
 		sharedObjects.put(ApplicationContext.class, context);

@@ -16,12 +16,20 @@
 
 package org.springframework.security.oauth2.client.oidc.authentication;
 
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import reactor.core.publisher.Mono;
+
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthorizationCodeAuthenticationToken;
@@ -44,20 +52,15 @@ import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
-import reactor.core.publisher.Mono;
-
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.oauth2.jwt.TestJwts.jwt;
 
 /**
  * @author Rob Winch
@@ -106,6 +109,12 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 	}
 
 	@Test
+	public void setJwtDecoderFactoryWhenNullThenIllegalArgumentException() {
+		assertThatThrownBy(() -> this.manager.setJwtDecoderFactory(null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	public void authenticateWhenNoSubscriptionThenDoesNothing() {
 		// we didn't do anything because it should cause a ClassCastException (as verified below)
 		TestingAuthenticationToken token = new TestingAuthenticationToken("a", "b");
@@ -140,6 +149,22 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 	}
 
 	@Test
+	public void authenticateWhenIdTokenValidationErrorThenOAuth2AuthenticationException() {
+		OAuth2AccessTokenResponse accessTokenResponse = OAuth2AccessTokenResponse.withToken("foo")
+				.tokenType(OAuth2AccessToken.TokenType.BEARER)
+				.additionalParameters(Collections.singletonMap(OidcParameterNames.ID_TOKEN, this.idToken.getTokenValue()))
+				.build();
+		when(this.accessTokenResponseClient.getTokenResponse(any())).thenReturn(Mono.just(accessTokenResponse));
+
+		when(this.jwtDecoder.decode(any())).thenThrow(new JwtException("ID Token Validation Error"));
+		this.manager.setJwtDecoderFactory(c -> this.jwtDecoder);
+
+		assertThatThrownBy(() -> this.manager.authenticate(loginToken()).block())
+				.isInstanceOf(OAuth2AuthenticationException.class)
+				.hasMessageContaining("[invalid_id_token] ID Token Validation Error");
+	}
+
+	@Test
 	public void authenticationWhenOAuth2UserNotFoundThenEmpty() {
 		OAuth2AccessTokenResponse accessTokenResponse = OAuth2AccessTokenResponse.withToken("foo")
 				.tokenType(OAuth2AccessToken.TokenType.BEARER)
@@ -150,14 +175,12 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 		claims.put(IdTokenClaimNames.ISS, "https://issuer.example.com");
 		claims.put(IdTokenClaimNames.SUB, "rob");
 		claims.put(IdTokenClaimNames.AUD, Arrays.asList("client-id"));
-		Instant issuedAt = Instant.now();
-		Instant expiresAt = Instant.from(issuedAt).plusSeconds(3600);
-		Jwt idToken = new Jwt("id-token", issuedAt, expiresAt, claims, claims);
+		Jwt idToken = jwt().claims(c -> c.putAll(claims)).build();
 
 		when(this.accessTokenResponseClient.getTokenResponse(any())).thenReturn(Mono.just(accessTokenResponse));
 		when(this.userService.loadUser(any())).thenReturn(Mono.empty());
 		when(this.jwtDecoder.decode(any())).thenReturn(Mono.just(idToken));
-		this.manager.setDecoderFactory(c -> this.jwtDecoder);
+		this.manager.setJwtDecoderFactory(c -> this.jwtDecoder);
 		assertThat(this.manager.authenticate(loginToken()).block()).isNull();
 	}
 
@@ -172,15 +195,13 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 		claims.put(IdTokenClaimNames.ISS, "https://issuer.example.com");
 		claims.put(IdTokenClaimNames.SUB, "rob");
 		claims.put(IdTokenClaimNames.AUD, Arrays.asList("client-id"));
-		Instant issuedAt = Instant.now();
-		Instant expiresAt = Instant.from(issuedAt).plusSeconds(3600);
-		Jwt idToken = new Jwt("id-token", issuedAt, expiresAt, claims, claims);
+		Jwt idToken = jwt().claims(c -> c.putAll(claims)).build();
 
 		when(this.accessTokenResponseClient.getTokenResponse(any())).thenReturn(Mono.just(accessTokenResponse));
 		DefaultOidcUser user = new DefaultOidcUser(AuthorityUtils.createAuthorityList("ROLE_USER"), this.idToken);
 		when(this.userService.loadUser(any())).thenReturn(Mono.just(user));
 		when(this.jwtDecoder.decode(any())).thenReturn(Mono.just(idToken));
-		this.manager.setDecoderFactory(c -> this.jwtDecoder);
+		this.manager.setJwtDecoderFactory(c -> this.jwtDecoder);
 
 		OAuth2LoginAuthenticationToken result = (OAuth2LoginAuthenticationToken) this.manager.authenticate(loginToken()).block();
 
@@ -201,15 +222,13 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 		claims.put(IdTokenClaimNames.ISS, "https://issuer.example.com");
 		claims.put(IdTokenClaimNames.SUB, "rob");
 		claims.put(IdTokenClaimNames.AUD, Arrays.asList("client-id"));
-		Instant issuedAt = Instant.now();
-		Instant expiresAt = Instant.from(issuedAt).plusSeconds(3600);
-		Jwt idToken = new Jwt("id-token", issuedAt, expiresAt, claims, claims);
+		Jwt idToken = jwt().claims(c -> c.putAll(claims)).build();
 
 		when(this.accessTokenResponseClient.getTokenResponse(any())).thenReturn(Mono.just(accessTokenResponse));
 		DefaultOidcUser user = new DefaultOidcUser(AuthorityUtils.createAuthorityList("ROLE_USER"), this.idToken);
 		when(this.userService.loadUser(any())).thenReturn(Mono.just(user));
 		when(this.jwtDecoder.decode(any())).thenReturn(Mono.just(idToken));
-		this.manager.setDecoderFactory(c -> this.jwtDecoder);
+		this.manager.setJwtDecoderFactory(c -> this.jwtDecoder);
 
 		OAuth2LoginAuthenticationToken result = (OAuth2LoginAuthenticationToken) this.manager.authenticate(loginToken()).block();
 
@@ -236,16 +255,14 @@ public class OidcAuthorizationCodeReactiveAuthenticationManagerTests {
 		claims.put(IdTokenClaimNames.ISS, "https://issuer.example.com");
 		claims.put(IdTokenClaimNames.SUB, "rob");
 		claims.put(IdTokenClaimNames.AUD, Arrays.asList(clientRegistration.getClientId()));
-		Instant issuedAt = Instant.now();
-		Instant expiresAt = Instant.from(issuedAt).plusSeconds(3600);
-		Jwt idToken = new Jwt("id-token", issuedAt, expiresAt, claims, claims);
+		Jwt idToken = jwt().claims(c -> c.putAll(claims)).build();
 
 		when(this.accessTokenResponseClient.getTokenResponse(any())).thenReturn(Mono.just(accessTokenResponse));
 		DefaultOidcUser user = new DefaultOidcUser(AuthorityUtils.createAuthorityList("ROLE_USER"), this.idToken);
 		ArgumentCaptor<OidcUserRequest> userRequestArgCaptor = ArgumentCaptor.forClass(OidcUserRequest.class);
 		when(this.userService.loadUser(userRequestArgCaptor.capture())).thenReturn(Mono.just(user));
 		when(this.jwtDecoder.decode(any())).thenReturn(Mono.just(idToken));
-		this.manager.setDecoderFactory(c -> this.jwtDecoder);
+		this.manager.setJwtDecoderFactory(c -> this.jwtDecoder);
 
 		this.manager.authenticate(loginToken()).block();
 

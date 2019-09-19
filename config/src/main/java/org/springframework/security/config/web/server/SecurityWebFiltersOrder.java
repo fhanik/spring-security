@@ -48,6 +48,10 @@ public enum SecurityWebFiltersOrder {
 	 */
 	FORM_LOGIN,
 	AUTHENTICATION,
+	/**
+	 * Instance of AnonymousAuthenticationWebFilter
+	 */
+	ANONYMOUS_AUTHENTICATION,
 	OAUTH2_AUTHORIZATION_CODE,
 	LOGIN_PAGE_GENERATING,
 	LOGOUT_PAGE_GENERATING,
@@ -68,11 +72,11 @@ public enum SecurityWebFiltersOrder {
 
 	private final int order;
 
-	private SecurityWebFiltersOrder() {
+	SecurityWebFiltersOrder() {
 		this.order = ordinal() * INTERVAL;
 	}
 
-	private SecurityWebFiltersOrder(int order) {
+	SecurityWebFiltersOrder(int order) {
 		this.order = order;
 	}
 

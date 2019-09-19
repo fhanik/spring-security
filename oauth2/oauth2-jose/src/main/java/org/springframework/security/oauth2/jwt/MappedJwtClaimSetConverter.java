@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,19 @@
 
 package org.springframework.security.oauth2.jwt;
 
-import java.net.MalformedURLException;
+import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.oauth2.core.converter.ClaimConversionService;
+import org.springframework.security.oauth2.core.converter.ClaimTypeConverter;
+import org.springframework.util.Assert;
+
 import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.util.Assert;
 
 /**
  * Converts a JWT claim set, claim by claim. Can be configured with custom converters
@@ -37,27 +36,28 @@ import org.springframework.util.Assert;
  *
  * @author Josh Cummings
  * @since 5.1
+ * @see ClaimTypeConverter
  */
-public final class MappedJwtClaimSetConverter
-		implements Converter<Map<String, Object>, Map<String, Object>> {
-
-	private static final Converter<Object, Collection<String>> AUDIENCE_CONVERTER = new AudienceConverter();
-	private static final Converter<Object, URL> ISSUER_CONVERTER = new IssuerConverter();
-	private static final Converter<Object, String> STRING_CONVERTER = new StringConverter();
-	private static final Converter<Object, Instant> TEMPORAL_CONVERTER = new InstantConverter();
-
-	private final Map<String, Converter<Object, ?>> claimConverters;
+public final class MappedJwtClaimSetConverter implements Converter<Map<String, Object>, Map<String, Object>> {
+	private final static ConversionService CONVERSION_SERVICE = ClaimConversionService.getSharedInstance();
+	private final static TypeDescriptor OBJECT_TYPE_DESCRIPTOR = TypeDescriptor.valueOf(Object.class);
+	private final static TypeDescriptor STRING_TYPE_DESCRIPTOR = TypeDescriptor.valueOf(String.class);
+	private final static TypeDescriptor INSTANT_TYPE_DESCRIPTOR = TypeDescriptor.valueOf(Instant.class);
+	private final static TypeDescriptor URL_TYPE_DESCRIPTOR = TypeDescriptor.valueOf(URL.class);
+	private final Map<String, Converter<Object, ?>> claimTypeConverters;
+	private final Converter<Map<String, Object>, Map<String, Object>> delegate;
 
 	/**
 	 * Constructs a {@link MappedJwtClaimSetConverter} with the provided arguments
 	 *
 	 * This will completely replace any set of default converters.
 	 *
-	 * @param claimConverters The {@link Map} of converters to use
+	 * @param claimTypeConverters The {@link Map} of converters to use
 	 */
-	public MappedJwtClaimSetConverter(Map<String, Converter<Object, ?>> claimConverters) {
-		Assert.notNull(claimConverters, "claimConverters cannot be null");
-		this.claimConverters = new HashMap<>(claimConverters);
+	public MappedJwtClaimSetConverter(Map<String, Converter<Object, ?>> claimTypeConverters) {
+		Assert.notNull(claimTypeConverters, "claimTypeConverters cannot be null");
+		this.claimTypeConverters = claimTypeConverters;
+		this.delegate = new ClaimTypeConverter(claimTypeConverters);
 	}
 
 	/**
@@ -79,27 +79,63 @@ public final class MappedJwtClaimSetConverter
 	 * 		Collections.singletonMap(JwtClaimNames.SUB, new UserDetailsServiceJwtSubjectConverter()));
 	 * </pre>
 	 *
-	 * To completely replace the underlying {@link Map} of converters, {@see MappedJwtClaimSetConverter(Map)}.
+	 * To completely replace the underlying {@link Map} of converters, see {@link MappedJwtClaimSetConverter#MappedJwtClaimSetConverter(Map)}.
 	 *
-	 * @param claimConverters
+	 * @param claimTypeConverters
 	 * @return An instance of {@link MappedJwtClaimSetConverter} that contains the converters provided,
 	 *   plus any defaults that were not overridden.
 	 */
-	public static MappedJwtClaimSetConverter withDefaults
-			(Map<String, Converter<Object, ?>> claimConverters) {
-		Assert.notNull(claimConverters, "claimConverters cannot be null");
+	public static MappedJwtClaimSetConverter withDefaults(Map<String, Converter<Object, ?>> claimTypeConverters) {
+		Assert.notNull(claimTypeConverters, "claimTypeConverters cannot be null");
+
+		Converter<Object, ?> stringConverter = getConverter(STRING_TYPE_DESCRIPTOR);
+		Converter<Object, ?> collectionStringConverter = getConverter(
+				TypeDescriptor.collection(Collection.class, STRING_TYPE_DESCRIPTOR));
 
 		Map<String, Converter<Object, ?>> claimNameToConverter = new HashMap<>();
-		claimNameToConverter.put(JwtClaimNames.AUD, AUDIENCE_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.EXP, TEMPORAL_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.IAT, TEMPORAL_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.ISS, ISSUER_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.JTI, STRING_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.NBF, TEMPORAL_CONVERTER);
-		claimNameToConverter.put(JwtClaimNames.SUB, STRING_CONVERTER);
-		claimNameToConverter.putAll(claimConverters);
+		claimNameToConverter.put(JwtClaimNames.AUD, collectionStringConverter);
+		claimNameToConverter.put(JwtClaimNames.EXP, MappedJwtClaimSetConverter::convertInstant);
+		claimNameToConverter.put(JwtClaimNames.IAT, MappedJwtClaimSetConverter::convertInstant);
+		claimNameToConverter.put(JwtClaimNames.ISS, MappedJwtClaimSetConverter::convertIssuer);
+		claimNameToConverter.put(JwtClaimNames.JTI, stringConverter);
+		claimNameToConverter.put(JwtClaimNames.NBF, MappedJwtClaimSetConverter::convertInstant);
+		claimNameToConverter.put(JwtClaimNames.SUB, stringConverter);
+		claimNameToConverter.putAll(claimTypeConverters);
 
 		return new MappedJwtClaimSetConverter(claimNameToConverter);
+	}
+
+	private static Converter<Object, ?> getConverter(TypeDescriptor targetDescriptor) {
+		return source -> CONVERSION_SERVICE.convert(source, OBJECT_TYPE_DESCRIPTOR, targetDescriptor);
+	}
+
+	private static Instant convertInstant(Object source) {
+		if (source == null) {
+			return null;
+		}
+		Instant result = (Instant) CONVERSION_SERVICE.convert(source, OBJECT_TYPE_DESCRIPTOR, INSTANT_TYPE_DESCRIPTOR);
+		if (result == null) {
+			throw new IllegalStateException("Could not coerce " + source + " into an Instant");
+		}
+		return result;
+	}
+
+	private static String convertIssuer(Object source) {
+		if (source == null) {
+			return null;
+		}
+		URL result = (URL) CONVERSION_SERVICE.convert(source, OBJECT_TYPE_DESCRIPTOR, URL_TYPE_DESCRIPTOR);
+		if (result != null) {
+			return result.toExternalForm();
+		}
+		if (source instanceof String && ((String) source).contains(":")) {
+			try {
+				return new URI((String) source).toString();
+			} catch (Exception ex) {
+				throw new IllegalStateException("Could not coerce " + source + " into a URI String", ex);
+			}
+		}
+		return (String) CONVERSION_SERVICE.convert(source, OBJECT_TYPE_DESCRIPTOR, STRING_TYPE_DESCRIPTOR);
 	}
 
 	/**
@@ -109,17 +145,10 @@ public final class MappedJwtClaimSetConverter
 	public Map<String, Object> convert(Map<String, Object> claims) {
 		Assert.notNull(claims, "claims cannot be null");
 
-		Map<String, Object> mappedClaims = new HashMap<>(claims);
+		Map<String, Object> mappedClaims = this.delegate.convert(claims);
 
-		for (Map.Entry<String, Converter<Object, ?>> entry : this.claimConverters.entrySet()) {
-			String claimName = entry.getKey();
-			Converter<Object, ?> converter = entry.getValue();
-			if (converter != null) {
-				Object claim = claims.get(claimName);
-				Object mappedClaim = converter.convert(claim);
-				mappedClaims.compute(claimName, (key, value) -> mappedClaim);
-			}
-		}
+		mappedClaims = removeClaims(mappedClaims);
+		mappedClaims = addClaims(mappedClaims);
 
 		Instant issuedAt = (Instant) mappedClaims.get(JwtClaimNames.IAT);
 		Instant expiresAt = (Instant) mappedClaims.get(JwtClaimNames.EXP);
@@ -130,112 +159,23 @@ public final class MappedJwtClaimSetConverter
 		return mappedClaims;
 	}
 
-	/**
-	 * Coerces an <a target="_blank" href="https://tools.ietf.org/html/rfc7519#section-4.1.3">Audience</a> claim
-	 * into a {@link Collection<String>}, ignoring null values, and throwing an error if its coercion efforts fail.
-	 */
-	private static class AudienceConverter implements Converter<Object, Collection<String>> {
-
-		@Override
-		public Collection<String> convert(Object source) {
-			if (source == null) {
-				return null;
+	private Map<String, Object> removeClaims(Map<String, Object> claims) {
+		Map<String, Object> result = new HashMap<>();
+		for (Map.Entry<String, Object> entry : claims.entrySet()) {
+			if (entry.getValue() != null) {
+				result.put(entry.getKey(), entry.getValue());
 			}
-
-			if (source instanceof Collection) {
-				return ((Collection<?>) source).stream()
-						.filter(Objects::nonNull)
-						.map(Objects::toString)
-						.collect(Collectors.toList());
-			}
-
-			return Arrays.asList(source.toString());
 		}
+		return result;
 	}
 
-	/**
-	 * Coerces an <a target="_blank" href="https://tools.ietf.org/html/rfc7519#section-4.1.1">Issuer</a> claim
-	 * into a {@link URL}, ignoring null values, and throwing an error if its coercion efforts fail.
-	 */
-	private static class IssuerConverter implements Converter<Object, URL> {
-
-		@Override
-		public URL convert(Object source) {
-			if (source == null) {
-				return null;
-			}
-
-			if (source instanceof URL) {
-				return (URL) source;
-			}
-
-			if (source instanceof URI) {
-				return toUrl((URI) source);
-			}
-
-			return toUrl(source.toString());
-		}
-
-		private URL toUrl(URI source) {
-			try {
-				return source.toURL();
-			} catch (MalformedURLException e) {
-				throw new IllegalStateException("Could not coerce " + source + " into a URL", e);
+	private Map<String, Object> addClaims(Map<String, Object> claims) {
+		Map<String, Object> result = new HashMap<>(claims);
+		for (Map.Entry<String, Converter<Object, ?>> entry : claimTypeConverters.entrySet()) {
+			if (!claims.containsKey(entry.getKey()) && entry.getValue().convert(null) != null) {
+				result.put(entry.getKey(), entry.getValue().convert(null));
 			}
 		}
-
-		private URL toUrl(String source) {
-			try {
-				return new URL(source);
-			} catch (MalformedURLException e) {
-				throw new IllegalStateException("Could not coerce " + source + " into a URL", e);
-			}
-		}
-	}
-
-	/**
-	 * Coerces a claim into an {@link Instant}, ignoring null values, and throwing an error
-	 * if its coercion efforts fail.
-	 */
-	private static class InstantConverter implements Converter<Object, Instant> {
-		@Override
-		public Instant convert(Object source) {
-			if (source == null) {
-				return null;
-			}
-
-			if (source instanceof Instant) {
-				return (Instant) source;
-			}
-
-			if (source instanceof Date) {
-				return ((Date) source).toInstant();
-			}
-
-			if (source instanceof Number) {
-				return Instant.ofEpochSecond(((Number) source).longValue());
-			}
-
-			try {
-				return Instant.ofEpochSecond(Long.parseLong(source.toString()));
-			} catch (Exception e) {
-				throw new IllegalStateException("Could not coerce " + source + " into an Instant", e);
-			}
-		}
-	}
-
-	/**
-	 * Coerces a claim into a {@link String}, ignoring null values, and throwing an error if its
-	 * coercion efforts fail.
-	 */
-	private static class StringConverter implements Converter<Object, String> {
-		@Override
-		public String convert(Object source) {
-			if (source == null) {
-				return null;
-			}
-
-			return source.toString();
-		}
+		return result;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,12 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.client.registration.TestClientRegistrations;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 
+import java.util.Collections;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +36,7 @@ import static org.mockito.Mockito.when;
  * Tests for {@link InMemoryOAuth2AuthorizedClientService}.
  *
  * @author Joe Grandja
+ * @author Vedran Pavic
  */
 public class InMemoryOAuth2AuthorizedClientServiceTests {
 	private String principalName1 = "principal-1";
@@ -55,6 +61,29 @@ public class InMemoryOAuth2AuthorizedClientServiceTests {
 	@Test(expected = IllegalArgumentException.class)
 	public void constructorWhenClientRegistrationRepositoryIsNullThenThrowIllegalArgumentException() {
 		new InMemoryOAuth2AuthorizedClientService(null);
+	}
+
+	@Test
+	public void constructorWhenAuthorizedClientsIsNullThenThrowIllegalArgumentException() {
+		assertThatThrownBy(() -> new InMemoryOAuth2AuthorizedClientService(this.clientRegistrationRepository, null))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("authorizedClients cannot be empty");
+	}
+
+	@Test
+	public void constructorWhenAuthorizedClientsProvidedThenUseProvidedAuthorizedClients() {
+		String registrationId = this.registration3.getRegistrationId();
+
+		Map<OAuth2AuthorizedClientId, OAuth2AuthorizedClient> authorizedClients = Collections.singletonMap(
+				new OAuth2AuthorizedClientId(this.registration3.getRegistrationId(), this.principalName1),
+				mock(OAuth2AuthorizedClient.class));
+		ClientRegistrationRepository clientRegistrationRepository = mock(ClientRegistrationRepository.class);
+		when(clientRegistrationRepository.findByRegistrationId(eq(registrationId))).thenReturn(this.registration3);
+
+		InMemoryOAuth2AuthorizedClientService authorizedClientService = new InMemoryOAuth2AuthorizedClientService(
+				clientRegistrationRepository, authorizedClients);
+		assertThat((OAuth2AuthorizedClient) authorizedClientService.loadAuthorizedClient(
+				registrationId, this.principalName1)).isNotNull();
 	}
 
 	@Test(expected = IllegalArgumentException.class)

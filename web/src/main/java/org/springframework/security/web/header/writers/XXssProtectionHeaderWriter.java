@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@ import org.springframework.security.web.header.HeaderWriter;
 
 /**
  * Renders the <a href=
- * "http://blogs.msdn.com/b/ieinternals/archive/2011/01/31/controlling-the-internet-explorer-xss-filter-with-the-x-xss-protection-http-header.aspx"
+ * "https://blogs.msdn.com/b/ieinternals/archive/2011/01/31/controlling-the-internet-explorer-xss-filter-with-the-x-xss-protection-http-header.aspx"
  * >X-XSS-Protection header</a>.
  *
  * @author Rob Winch
+ * @author Ankur Pathak
  * @since 3.2
  */
 public final class XXssProtectionHeaderWriter implements HeaderWriter {
@@ -47,7 +48,9 @@ public final class XXssProtectionHeaderWriter implements HeaderWriter {
 	}
 
 	public void writeHeaders(HttpServletRequest request, HttpServletResponse response) {
-		response.setHeader(XSS_PROTECTION_HEADER, headerValue);
+		if (!response.containsHeader(XSS_PROTECTION_HEADER)) {
+			response.setHeader(XSS_PROTECTION_HEADER, headerValue);
+		}
 	}
 
 	/**

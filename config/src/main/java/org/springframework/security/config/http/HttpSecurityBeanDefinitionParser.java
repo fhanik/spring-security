@@ -164,7 +164,7 @@ public class HttpSecurityBeanDefinitionParser implements BeanDefinitionParser {
 		unorderedFilterChain.addAll(authBldr.getFilters());
 		unorderedFilterChain.addAll(buildCustomFilterList(element, pc));
 
-		Collections.sort(unorderedFilterChain, new OrderComparator());
+		unorderedFilterChain.sort(new OrderComparator());
 		checkFilterChainOrder(unorderedFilterChain, pc, pc.extractSource(element));
 
 		// The list of filter beans
@@ -415,12 +415,12 @@ class OrderDecorator implements Ordered {
 	final BeanMetadataElement bean;
 	final int order;
 
-	public OrderDecorator(BeanMetadataElement bean, SecurityFilters filterOrder) {
+	OrderDecorator(BeanMetadataElement bean, SecurityFilters filterOrder) {
 		this.bean = bean;
 		this.order = filterOrder.getOrder();
 	}
 
-	public OrderDecorator(BeanMetadataElement bean, int order) {
+	OrderDecorator(BeanMetadataElement bean, int order) {
 		this.bean = bean;
 		this.order = order;
 	}

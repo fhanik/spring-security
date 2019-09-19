@@ -77,7 +77,7 @@ class SavedRequestAwareWrapper extends HttpServletRequestWrapper {
 	// ~ Constructors
 	// ===================================================================================================
 
-	public SavedRequestAwareWrapper(SavedRequest saved, HttpServletRequest request) {
+	SavedRequestAwareWrapper(SavedRequest saved, HttpServletRequest request) {
 		super(request);
 		savedRequest = saved;
 
@@ -248,6 +248,6 @@ class SavedRequestAwareWrapper extends HttpServletRequestWrapper {
 			}
 		}
 
-		return combinedParams.toArray(new String[combinedParams.size()]);
+		return combinedParams.toArray(new String[0]);
 	}
 }

@@ -33,14 +33,14 @@ public interface RoleHierarchy {
 	 * that are (transitively) reachable from them in the role hierarchy.
 	 * <p>
 	 * Example:<br>
-	 * Role hierarchy: ROLE_A &gt; ROLE_B and ROLE_B &gt; ROLE_C.<br>
+	 * Role hierarchy: ROLE_A &gt; ROLE_B &gt; ROLE_C.<br>
 	 * Directly assigned authority: ROLE_A.<br>
 	 * Reachable authorities: ROLE_A, ROLE_B, ROLE_C.
 	 *
 	 * @param authorities - List of the directly assigned authorities.
 	 * @return List of all reachable authorities given the assigned authorities.
 	 */
-	public Collection<? extends GrantedAuthority> getReachableGrantedAuthorities(
+	Collection<? extends GrantedAuthority> getReachableGrantedAuthorities(
 			Collection<? extends GrantedAuthority> authorities);
 
 }

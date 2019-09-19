@@ -45,14 +45,14 @@ public abstract class AbstractAccessDecisionManager implements AccessDecisionMan
 	// ================================================================================================
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	private List<AccessDecisionVoter<? extends Object>> decisionVoters;
+	private List<AccessDecisionVoter<?>> decisionVoters;
 
 	protected MessageSourceAccessor messages = SpringSecurityMessageSource.getAccessor();
 
 	private boolean allowIfAllAbstainDecisions = false;
 
 	protected AbstractAccessDecisionManager(
-			List<AccessDecisionVoter<? extends Object>> decisionVoters) {
+			List<AccessDecisionVoter<?>> decisionVoters) {
 		Assert.notEmpty(decisionVoters, "A list of AccessDecisionVoters is required");
 		this.decisionVoters = decisionVoters;
 	}
@@ -60,7 +60,7 @@ public abstract class AbstractAccessDecisionManager implements AccessDecisionMan
 	// ~ Methods
 	// ========================================================================================================
 
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		Assert.notEmpty(this.decisionVoters, "A list of AccessDecisionVoters is required");
 		Assert.notNull(this.messages, "A message source must be set");
 	}
@@ -72,7 +72,7 @@ public abstract class AbstractAccessDecisionManager implements AccessDecisionMan
 		}
 	}
 
-	public List<AccessDecisionVoter<? extends Object>> getDecisionVoters() {
+	public List<AccessDecisionVoter<?>> getDecisionVoters() {
 		return this.decisionVoters;
 	}
 

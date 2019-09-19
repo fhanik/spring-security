@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -108,17 +109,35 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 
 	/**
 	 * Configures the {@link XContentTypeOptionsHeaderWriter} which inserts the <a href=
-	 * "http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx"
+	 * "https://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx"
 	 * >X-Content-Type-Options</a>:
 	 *
 	 * <pre>
 	 * X-Content-Type-Options: nosniff
 	 * </pre>
 	 *
-	 * @return the ContentTypeOptionsConfig for additional customizations
+	 * @return the {@link ContentTypeOptionsConfig} for additional customizations
 	 */
 	public ContentTypeOptionsConfig contentTypeOptions() {
 		return contentTypeOptions.enable();
+	}
+
+	/**
+	 * Configures the {@link XContentTypeOptionsHeaderWriter} which inserts the <a href=
+	 * "https://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx"
+	 * >X-Content-Type-Options</a>:
+	 *
+	 * <pre>
+	 * X-Content-Type-Options: nosniff
+	 * </pre>
+	 *
+	 * @param contentTypeOptionsCustomizer the {@link Customizer} to provide more options for
+	 * the {@link ContentTypeOptionsConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> contentTypeOptions(Customizer<ContentTypeOptionsConfig> contentTypeOptionsCustomizer) {
+		contentTypeOptionsCustomizer.customize(contentTypeOptions.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class ContentTypeOptionsConfig {
@@ -164,14 +183,32 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * <p>
 	 * Allows customizing the {@link XXssProtectionHeaderWriter} which adds the <a href=
-	 * "http://blogs.msdn.com/b/ieinternals/archive/2011/01/31/controlling-the-internet-explorer-xss-filter-with-the-x-xss-protection-http-header.aspx"
+	 * "https://blogs.msdn.com/b/ieinternals/archive/2011/01/31/controlling-the-internet-explorer-xss-filter-with-the-x-xss-protection-http-header.aspx"
 	 * >X-XSS-Protection header</a>
 	 * </p>
 	 *
-	 * @return the {@link HeadersConfigurer} for additional customizations
+	 * @return the {@link XXssConfig} for additional customizations
 	 */
 	public XXssConfig xssProtection() {
 		return xssProtection.enable();
+	}
+
+	/**
+	 * <strong>Note this is not comprehensive XSS protection!</strong>
+	 *
+	 * <p>
+	 * Allows customizing the {@link XXssProtectionHeaderWriter} which adds the <a href=
+	 * "https://blogs.msdn.com/b/ieinternals/archive/2011/01/31/controlling-the-internet-explorer-xss-filter-with-the-x-xss-protection-http-header.aspx"
+	 * >X-XSS-Protection header</a>
+	 * </p>
+	 *
+	 * @param xssCustomizer the {@link Customizer} to provide more options for
+	 * the {@link XXssConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> xssProtection(Customizer<XXssConfig> xssCustomizer) {
+		xssCustomizer.customize(xssProtection.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class XXssConfig {
@@ -262,10 +299,28 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 * <li>Expires: 0</li>
 	 * </ul>
 	 *
-	 * @return the {@link HeadersConfigurer} for additional customizations
+	 * @return the {@link CacheControlConfig} for additional customizations
 	 */
 	public CacheControlConfig cacheControl() {
 		return cacheControl.enable();
+	}
+
+	/**
+	 * Allows customizing the {@link CacheControlHeadersWriter}. Specifically it adds the
+	 * following headers:
+	 * <ul>
+	 * <li>Cache-Control: no-cache, no-store, max-age=0, must-revalidate</li>
+	 * <li>Pragma: no-cache</li>
+	 * <li>Expires: 0</li>
+	 * </ul>
+	 *
+	 * @param cacheControlCustomizer the {@link Customizer} to provide more options for
+	 * the {@link CacheControlConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> cacheControl(Customizer<CacheControlConfig> cacheControlCustomizer) {
+		cacheControlCustomizer.customize(cacheControl.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class CacheControlConfig {
@@ -310,13 +365,27 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 
 	/**
 	 * Allows customizing the {@link HstsHeaderWriter} which provides support for <a
-	 * href="http://tools.ietf.org/html/rfc6797">HTTP Strict Transport Security
+	 * href="https://tools.ietf.org/html/rfc6797">HTTP Strict Transport Security
 	 * (HSTS)</a>.
 	 *
-	 * @return the {@link HeadersConfigurer} for additional customizations
+	 * @return the {@link HstsConfig} for additional customizations
 	 */
 	public HstsConfig httpStrictTransportSecurity() {
 		return hsts.enable();
+	}
+
+	/**
+	 * Allows customizing the {@link HstsHeaderWriter} which provides support for <a
+	 * href="https://tools.ietf.org/html/rfc6797">HTTP Strict Transport Security
+	 * (HSTS)</a>.
+	 *
+	 * @param hstsCustomizer the {@link Customizer} to provide more options for
+	 * the {@link HstsConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> httpStrictTransportSecurity(Customizer<HstsConfig> hstsCustomizer) {
+		hstsCustomizer.customize(hsts.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class HstsConfig {
@@ -335,7 +404,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * <p>
 		 * This instructs browsers how long to remember to keep this domain as a known
 		 * HSTS Host. See <a
-		 * href="http://tools.ietf.org/html/rfc6797#section-6.1.1">Section 6.1.1</a> for
+		 * href="https://tools.ietf.org/html/rfc6797#section-6.1.1">Section 6.1.1</a> for
 		 * additional details.
 		 * </p>
 		 *
@@ -368,7 +437,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * </p>
 		 *
 		 * <p>
-		 * See <a href="http://tools.ietf.org/html/rfc6797#section-6.1.2">Section
+		 * See <a href="https://tools.ietf.org/html/rfc6797#section-6.1.2">Section
 		 * 6.1.2</a> for additional details.
 		 * </p>
 		 *
@@ -376,6 +445,25 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 */
 		public HstsConfig includeSubDomains(boolean includeSubDomains) {
 			writer.setIncludeSubDomains(includeSubDomains);
+			return this;
+		}
+
+		/**
+		 * <p>
+		 * If true, preload will be included in HSTS Header. The default is false.
+		 * </p>
+		 *
+		 * <p>
+		 * See <a href="https://hstspreload.org/">Website hstspreload.org</a>
+		 * for additional details.
+		 * </p>
+		 *
+		 * @param preload true to include preload, else false
+		 * @since 5.2.0
+		 * @author Ankur Pathak
+		 */
+		public HstsConfig preload(boolean preload) {
+			writer.setPreload(preload);
 			return this;
 		}
 
@@ -415,10 +503,22 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	/**
 	 * Allows customizing the {@link XFrameOptionsHeaderWriter}.
 	 *
-	 * @return the {@link HeadersConfigurer} for additional customizations
+	 * @return the {@link FrameOptionsConfig} for additional customizations
 	 */
 	public FrameOptionsConfig frameOptions() {
 		return frameOptions.enable();
+	}
+
+	/**
+	 * Allows customizing the {@link XFrameOptionsHeaderWriter}.
+	 *
+	 * @param frameOptionsCustomizer the {@link Customizer} to provide more options for
+	 * the {@link FrameOptionsConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> frameOptions(Customizer<FrameOptionsConfig> frameOptionsCustomizer) {
+		frameOptionsCustomizer.customize(frameOptions.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class FrameOptionsConfig {
@@ -487,14 +587,27 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 
 	/**
 	 * Allows customizing the {@link HpkpHeaderWriter} which provides support for <a
-	 * href="http://tools.ietf.org/html/rfc7469">HTTP Public Key Pinning (HPKP)</a>.
+	 * href="https://tools.ietf.org/html/rfc7469">HTTP Public Key Pinning (HPKP)</a>.
 	 *
-	 * @return the {@link HeadersConfigurer} for additional customizations
+	 * @return the {@link HpkpConfig} for additional customizations
 	 *
 	 * @since 4.1
 	 */
 	public HpkpConfig httpPublicKeyPinning() {
 		return hpkp.enable();
+	}
+
+	/**
+	 * Allows customizing the {@link HpkpHeaderWriter} which provides support for <a
+	 * href="https://tools.ietf.org/html/rfc7469">HTTP Public Key Pinning (HPKP)</a>.
+	 *
+	 * @param hpkpCustomizer the {@link Customizer} to provide more options for
+	 * the {@link HpkpConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> httpPublicKeyPinning(Customizer<HpkpConfig> hpkpCustomizer) {
+		hpkpCustomizer.customize(hpkp.enable());
+		return HeadersConfigurer.this;
 	}
 
 	public final class HpkpConfig {
@@ -510,7 +623,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * <p>
 		 * The pin directive specifies a way for web host operators to indicate
 		 * a cryptographic identity that should be bound to a given web host.
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.1">Section 2.1.1</a> for additional details.
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.1">Section 2.1.1</a> for additional details.
 		 * </p>
 		 *
 		 * @param pins the map of base64-encoded SPKI fingerprint &amp; cryptographic hash algorithm pairs.
@@ -529,7 +642,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * <p>
 		 * The pin directive specifies a way for web host operators to indicate
 		 * a cryptographic identity that should be bound to a given web host.
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.1">Section 2.1.1</a> for additional details.
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.1">Section 2.1.1</a> for additional details.
 		 * </p>
 		 *
 		 * @param pins a list of base64-encoded SPKI fingerprints.
@@ -548,7 +661,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 *
 		 * <p>
 		 * This instructs browsers how long they should regard the host (from whom the message was received)
-		 * as a known pinned host. See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.2">Section
+		 * as a known pinned host. See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.2">Section
 		 * 2.1.2</a> for additional details.
 		 * </p>
 		 *
@@ -568,7 +681,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * </p>
 		 *
 		 * <p>
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.3">Section 2.1.3</a>
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.3">Section 2.1.3</a>
 		 * for additional details.
 		 * </p>
 		 *
@@ -585,7 +698,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * </p>
 		 *
 		 * <p>
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1">Section 2.1</a>
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1">Section 2.1</a>
 		 * for additional details.
 		 * </p>
 		 *
@@ -602,7 +715,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * </p>
 		 *
 		 * <p>
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.4">Section 2.1.4</a>
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.4">Section 2.1.4</a>
 		 * for additional details.
 		 * </p>
 		 *
@@ -619,7 +732,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		 * </p>
 		 *
 		 * <p>
-		 * See <a href="http://tools.ietf.org/html/rfc7469#section-2.1.4">Section 2.1.4</a>
+		 * See <a href="https://tools.ietf.org/html/rfc7469#section-2.1.4">Section 2.1.4</a>
 		 * for additional details.
 		 * </p>
 		 *
@@ -685,7 +798,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * @see ContentSecurityPolicyHeaderWriter
 	 * @since 4.1
-	 * @return the ContentSecurityPolicyConfig for additional configuration
+	 * @return the {@link ContentSecurityPolicyConfig} for additional configuration
 	 * @throws IllegalArgumentException if policyDirectives is null or empty
 	 */
 	public ContentSecurityPolicyConfig contentSecurityPolicy(String policyDirectives) {
@@ -694,10 +807,53 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		return contentSecurityPolicy;
 	}
 
+	/**
+	 * <p>
+	 * Allows configuration for <a href="https://www.w3.org/TR/CSP2/">Content Security Policy (CSP) Level 2</a>.
+	 * </p>
+	 *
+	 * <p>
+	 * Calling this method automatically enables (includes) the Content-Security-Policy header in the response
+	 * using the supplied security policy directive(s).
+	 * </p>
+	 *
+	 * <p>
+	 * Configuration is provided to the {@link ContentSecurityPolicyHeaderWriter} which supports the writing
+	 * of the two headers as detailed in the W3C Candidate Recommendation:
+	 * </p>
+	 * <ul>
+	 * 	<li>Content-Security-Policy</li>
+	 * 	<li>Content-Security-Policy-Report-Only</li>
+	 * </ul>
+	 *
+	 * @see ContentSecurityPolicyHeaderWriter
+	 * @param contentSecurityCustomizer the {@link Customizer} to provide more options for
+	 * the {@link ContentSecurityPolicyConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> contentSecurityPolicy(Customizer<ContentSecurityPolicyConfig> contentSecurityCustomizer) {
+		this.contentSecurityPolicy.writer = new ContentSecurityPolicyHeaderWriter();
+		contentSecurityCustomizer.customize(this.contentSecurityPolicy);
+
+		return HeadersConfigurer.this;
+	}
+
 	public final class ContentSecurityPolicyConfig {
 		private ContentSecurityPolicyHeaderWriter writer;
 
 		private ContentSecurityPolicyConfig() {
+		}
+
+		/**
+		 * Sets the security policy directive(s) to be used in the response header.
+		 *
+		 * @param policyDirectives the security policy directive(s)
+		 * @return the {@link ContentSecurityPolicyConfig} for additional configuration
+		 * @throws IllegalArgumentException if policyDirectives is null or empty
+		 */
+		public ContentSecurityPolicyConfig policyDirectives(String policyDirectives) {
+			this.writer.setPolicyDirectives(policyDirectives);
+			return this;
 		}
 
 		/**
@@ -743,7 +899,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	}
 
 	@Override
-	public void configure(H http) throws Exception {
+	public void configure(H http) {
 		HeaderWriterFilter headersFilter = createHeaderWriterFilter();
 		http.addFilter(headersFilter);
 	}
@@ -811,7 +967,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * @see ReferrerPolicyHeaderWriter
 	 * @since 4.2
-	 * @return the ReferrerPolicyConfig for additional configuration
+	 * @return the {@link ReferrerPolicyConfig} for additional configuration
 	 */
 	public ReferrerPolicyConfig referrerPolicy() {
 		this.referrerPolicy.writer = new ReferrerPolicyHeaderWriter();
@@ -833,7 +989,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * @see ReferrerPolicyHeaderWriter
 	 * @since 4.2
-	 * @return the ReferrerPolicyConfig for additional configuration
+	 * @return the {@link ReferrerPolicyConfig} for additional configuration
 	 * @throws IllegalArgumentException if policy is null or empty
 	 */
 	public ReferrerPolicyConfig referrerPolicy(ReferrerPolicy policy) {
@@ -841,11 +997,47 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 		return this.referrerPolicy;
 	}
 
+	/**
+	 * <p>
+	 * Allows configuration for <a href="https://www.w3.org/TR/referrer-policy/">Referrer Policy</a>.
+	 * </p>
+	 *
+	 * <p>
+	 * Configuration is provided to the {@link ReferrerPolicyHeaderWriter} which support the writing
+	 * of the header as detailed in the W3C Technical Report:
+	 * </p>
+	 * <ul>
+	 *  <li>Referrer-Policy</li>
+	 * </ul>
+	 *
+	 * @see ReferrerPolicyHeaderWriter
+	 * @param referrerPolicyCustomizer the {@link Customizer} to provide more options for
+	 * the {@link ReferrerPolicyConfig}
+	 * @return the {@link HeadersConfigurer} for additional customizations
+	 */
+	public HeadersConfigurer<H> referrerPolicy(Customizer<ReferrerPolicyConfig> referrerPolicyCustomizer) {
+		this.referrerPolicy.writer = new ReferrerPolicyHeaderWriter();
+		referrerPolicyCustomizer.customize(this.referrerPolicy);
+		return HeadersConfigurer.this;
+	}
+
 	public final class ReferrerPolicyConfig {
 
 		private ReferrerPolicyHeaderWriter writer;
 
 		private ReferrerPolicyConfig() {
+		}
+
+		/**
+		 * Sets the policy to be used in the response header.
+		 *
+		 * @param policy a referrer policy
+		 * @return the {@link ReferrerPolicyConfig} for additional configuration
+		 * @throws IllegalArgumentException if policy is null
+		 */
+		public ReferrerPolicyConfig policy(ReferrerPolicy policy) {
+			this.writer.setPolicy(policy);
+			return this;
 		}
 
 		public HeadersConfigurer<H> and() {
@@ -866,7 +1058,7 @@ public class HeadersConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 *
 	 * @see FeaturePolicyHeaderWriter
 	 * @since 5.1
-	 * @return the {@link FeaturePolicyHeaderWriter} for additional configuration
+	 * @return the {@link FeaturePolicyConfig} for additional configuration
 	 * @throws IllegalArgumentException if policyDirectives is {@code null} or empty
 	 */
 	public FeaturePolicyConfig featurePolicy(String policyDirectives) {

@@ -69,6 +69,12 @@ public abstract class OnCommittedResponseWrapper extends HttpServletResponseWrap
 		super.setContentLength(len);
 	}
 
+	@Override
+	public void setContentLengthLong(long len) {
+		setContentLength(len);
+		super.setContentLengthLong(len);
+	}
+
 	private void setContentLength(long len) {
 		this.contentLength = len;
 		checkContentLength(0);
@@ -258,7 +264,7 @@ public abstract class OnCommittedResponseWrapper extends HttpServletResponseWrap
 	private class SaveContextPrintWriter extends PrintWriter {
 		private final PrintWriter delegate;
 
-		public SaveContextPrintWriter(PrintWriter delegate) {
+		SaveContextPrintWriter(PrintWriter delegate) {
 			super(delegate);
 			this.delegate = delegate;
 		}
@@ -498,7 +504,7 @@ public abstract class OnCommittedResponseWrapper extends HttpServletResponseWrap
 	private class SaveContextServletOutputStream extends ServletOutputStream {
 		private final ServletOutputStream delegate;
 
-		public SaveContextServletOutputStream(ServletOutputStream delegate) {
+		SaveContextServletOutputStream(ServletOutputStream delegate) {
 			this.delegate = delegate;
 		}
 

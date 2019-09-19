@@ -58,7 +58,7 @@ public class AnonymousAuthenticationTokenTests {
 
 		try {
 			new AnonymousAuthenticationToken("key", "Test",
-					(List<GrantedAuthority>) null);
+					null);
 			fail("Should have thrown IllegalArgumentException");
 		}
 		catch (IllegalArgumentException expected) {
@@ -149,17 +149,17 @@ public class AnonymousAuthenticationTokenTests {
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void constructorWhenNullAuthoritiesThenThrowIllegalArgumentException() throws Exception {
+	public void constructorWhenNullAuthoritiesThenThrowIllegalArgumentException() {
 		new AnonymousAuthenticationToken("key", "principal", null);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void constructorWhenEmptyAuthoritiesThenThrowIllegalArgumentException() throws Exception {
+	public void constructorWhenEmptyAuthoritiesThenThrowIllegalArgumentException() {
 		new AnonymousAuthenticationToken("key", "principal", Collections.<GrantedAuthority>emptyList());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void constructorWhenPrincipalIsEmptyStringThenThrowIllegalArgumentException() throws Exception {
+	public void constructorWhenPrincipalIsEmptyStringThenThrowIllegalArgumentException() {
 		new AnonymousAuthenticationToken("key", "", ROLES_12);
 	}
 }

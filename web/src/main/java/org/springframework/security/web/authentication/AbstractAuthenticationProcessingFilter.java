@@ -245,7 +245,7 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 	 * current invocation.
 	 * <p>
 	 * It strips any parameters from the "path" section of the request URL (such as the
-	 * jsessionid parameter in <em>http://host/myapp/index.html;jsessionid=blah</em>)
+	 * jsessionid parameter in <em>https://host/myapp/index.html;jsessionid=blah</em>)
 	 * before matching against the <code>filterProcessesUrl</code> property.
 	 * <p>
 	 * Subclasses may override for special requirements, such as Tapestry integration.
@@ -280,8 +280,7 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 	 * @throws AuthenticationException if authentication fails.
 	 */
 	public abstract Authentication attemptAuthentication(HttpServletRequest request,
-			HttpServletResponse response) throws AuthenticationException, IOException,
-			ServletException;
+			HttpServletResponse response) throws AuthenticationException, IOException;
 
 	/**
 	 * Default behaviour for successful authentication.

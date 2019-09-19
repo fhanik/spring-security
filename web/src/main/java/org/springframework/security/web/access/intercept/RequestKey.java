@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package org.springframework.security.web.access.intercept;
 
+import org.springframework.util.Assert;
+
 /**
  * @author Luke Taylor
  * @since 2.0
@@ -28,6 +30,7 @@ public class RequestKey {
 	}
 
 	public RequestKey(String url, String method) {
+		Assert.notNull(url, "url cannot be null");
 		this.url = url;
 		this.method = method;
 	}
@@ -42,14 +45,9 @@ public class RequestKey {
 
 	@Override
 	public int hashCode() {
-		int code = 31;
-		code ^= url.hashCode();
-
-		if (method != null) {
-			code ^= method.hashCode();
-		}
-
-		return code;
+		int result = this.url.hashCode();
+		result = 31 * result + (this.method != null ? this.method.hashCode() : 0);
+		return result;
 	}
 
 	@Override

@@ -46,7 +46,7 @@ import org.springframework.dao.DataRetrievalFailureException;
  * @author Luke Taylor
  *
  * @see org.springframework.security.ldap.ppolicy.PasswordPolicyControl
- * @see <a href="http://www.ibm.com/developerworks/tivoli/library/t-ldap-controls/">Stefan
+ * @see <a href="https://www.ibm.com/developerworks/tivoli/library/t-ldap-controls/">Stefan
  * Zoerner's IBM developerworks article on LDAP controls.</a>
  */
 public class PasswordPolicyResponseControl extends PasswordPolicyControl {
@@ -299,7 +299,7 @@ public class PasswordPolicyResponseControl extends PasswordPolicyControl {
 						return new BEREnumerated(stream, bytesRead);
 					}
 					else {
-						if (this.inChoice.booleanValue()) {
+						if (this.inChoice) {
 							// graceLogins
 							return new BERInteger(stream, bytesRead);
 						}
@@ -310,7 +310,7 @@ public class PasswordPolicyResponseControl extends PasswordPolicyControl {
 			}
 
 			private void setInChoice(boolean inChoice) {
-				this.inChoice = Boolean.valueOf(inChoice);
+				this.inChoice = inChoice;
 			}
 		}
 	}

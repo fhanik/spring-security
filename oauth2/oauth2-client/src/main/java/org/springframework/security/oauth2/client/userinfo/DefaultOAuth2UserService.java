@@ -15,13 +15,19 @@
  */
 package org.springframework.security.oauth2.client.userinfo;
 
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.http.OAuth2ErrorResponseErrorHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -34,10 +40,6 @@ import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * An implementation of an {@link OAuth2UserService} that supports standard OAuth 2.0 Provider's.
@@ -127,7 +129,12 @@ public class DefaultOAuth2UserService implements OAuth2UserService<OAuth2UserReq
 		}
 
 		Map<String, Object> userAttributes = response.getBody();
-		Set<GrantedAuthority> authorities = Collections.singleton(new OAuth2UserAuthority(userAttributes));
+		Set<GrantedAuthority> authorities = new LinkedHashSet<>();
+		authorities.add(new OAuth2UserAuthority(userAttributes));
+		OAuth2AccessToken token = userRequest.getAccessToken();
+		for (String authority : token.getScopes()) {
+			authorities.add(new SimpleGrantedAuthority("SCOPE_" + authority));
+		}
 
 		return new DefaultOAuth2User(authorities, userAttributes, userNameAttributeName);
 	}

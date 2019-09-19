@@ -16,8 +16,6 @@
 
 package org.springframework.security.authentication.jaas;
 
-import java.security.Principal;
-
 import java.util.Map;
 
 import javax.security.auth.Subject;
@@ -39,11 +37,11 @@ public class TestLoginModule implements LoginModule {
 	// ~ Methods
 	// ========================================================================================================
 
-	public boolean abort() throws LoginException {
+	public boolean abort() {
 		return true;
 	}
 
-	public boolean commit() throws LoginException {
+	public boolean commit() {
 		return true;
 	}
 
@@ -77,22 +75,14 @@ public class TestLoginModule implements LoginModule {
 			throw new LoginException("Bad Password");
 		}
 
-		subject.getPrincipals().add(new Principal() {
-			public String getName() {
-				return "TEST_PRINCIPAL";
-			}
-		});
+		subject.getPrincipals().add(() -> "TEST_PRINCIPAL");
 
-		subject.getPrincipals().add(new Principal() {
-			public String getName() {
-				return "NULL_PRINCIPAL";
-			}
-		});
+		subject.getPrincipals().add(() -> "NULL_PRINCIPAL");
 
 		return true;
 	}
 
-	public boolean logout() throws LoginException {
+	public boolean logout() {
 		return true;
 	}
 }

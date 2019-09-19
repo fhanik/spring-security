@@ -16,16 +16,6 @@
 
 package org.springframework.security.oauth2.server.resource.web.access;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,12 +23,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.BearerTokenErrorCodes;
 import org.springframework.security.oauth2.server.resource.authentication.AbstractOAuth2TokenAuthenticationToken;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.util.StringUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Translates any {@link AccessDeniedException} into an HTTP response in accordance with
  * <a href="https://tools.ietf.org/html/rfc6750#section-3" target="_blank">RFC 6750 Section 3: The WWW-Authenticate</a>.
- *
+ * <p>
  * So long as the class can prove that the request has a valid OAuth 2.0 {@link Authentication}, then will return an
  * <a href="https://tools.ietf.org/html/rfc6750#section-3.1" target="_blank">insufficient scope error</a>; otherwise,
  * it will simply indicate the scheme (Bearer) and any configured realm.
@@ -48,25 +42,20 @@ import org.springframework.util.StringUtils;
  */
 public final class BearerTokenAccessDeniedHandler implements AccessDeniedHandler {
 
-	private static final Collection<String> WELL_KNOWN_SCOPE_ATTRIBUTE_NAMES =
-			Arrays.asList("scope", "scp");
-
 	private String realmName;
 
 	/**
 	 * Collect error details from the provided parameters and format according to
-	 * RFC 6750, specifically {@code error}, {@code error_description}, {@code error_uri}, and {@scope scope}.
+	 * RFC 6750, specifically {@code error}, {@code error_description}, {@code error_uri}, and {@code scope}.
 	 *
-	 * @param request that resulted in an <code>AccessDeniedException</code>
-	 * @param response so that the user agent can be advised of the failure
+	 * @param request               that resulted in an <code>AccessDeniedException</code>
+	 * @param response              so that the user agent can be advised of the failure
 	 * @param accessDeniedException that caused the invocation
-	 *
 	 */
 	@Override
 	public void handle(
 			HttpServletRequest request, HttpServletResponse response,
-			AccessDeniedException accessDeniedException)
-			throws IOException, ServletException {
+			AccessDeniedException accessDeniedException) {
 
 		Map<String, String> parameters = new LinkedHashMap<>();
 
@@ -75,19 +64,9 @@ public final class BearerTokenAccessDeniedHandler implements AccessDeniedHandler
 		}
 
 		if (request.getUserPrincipal() instanceof AbstractOAuth2TokenAuthenticationToken) {
-			AbstractOAuth2TokenAuthenticationToken token =
-					(AbstractOAuth2TokenAuthenticationToken) request.getUserPrincipal();
-
-			String scope = getScope(token);
-
 			parameters.put("error", BearerTokenErrorCodes.INSUFFICIENT_SCOPE);
-			parameters.put("error_description",
-					String.format("The token provided has insufficient scope [%s] for this request", scope));
+			parameters.put("error_description", "The request requires higher privileges than provided by the access token.");
 			parameters.put("error_uri", "https://tools.ietf.org/html/rfc6750#section-3.1");
-
-			if (StringUtils.hasText(scope)) {
-				parameters.put("scope", scope);
-			}
 		}
 
 		String wwwAuthenticate = computeWWWAuthenticateHeaderValue(parameters);
@@ -101,37 +80,27 @@ public final class BearerTokenAccessDeniedHandler implements AccessDeniedHandler
 	 *
 	 * @param realmName
 	 */
-	public final void setRealmName(String realmName) {
+	public void setRealmName(String realmName) {
 		this.realmName = realmName;
 	}
 
-	private static String getScope(AbstractOAuth2TokenAuthenticationToken token) {
+	private static String computeWWWAuthenticateHeaderValue(Map<String, String> parameters) {
+		StringBuilder wwwAuthenticate = new StringBuilder();
+		wwwAuthenticate.append("Bearer");
 
-		Map<String, Object> attributes = token.getTokenAttributes();
+		if (!parameters.isEmpty()) {
+			wwwAuthenticate.append(" ");
+			int i = 0;
+			for (Map.Entry<String, String> entry : parameters.entrySet()) {
+				wwwAuthenticate.append(entry.getKey()).append("=\"").append(entry.getValue()).append("\"");
 
-		for (String attributeName : WELL_KNOWN_SCOPE_ATTRIBUTE_NAMES) {
-			Object scopes = attributes.get(attributeName);
-			if (scopes instanceof String) {
-				return (String) scopes;
-			} else if (scopes instanceof Collection) {
-				Collection coll = (Collection) scopes;
-				return (String) coll.stream()
-						.map(String::valueOf)
-						.collect(Collectors.joining(" "));
+				if (i != parameters.size() - 1) {
+					wwwAuthenticate.append(", ");
+				}
+				i++;
 			}
 		}
 
-		return "";
-	}
-
-	private static String computeWWWAuthenticateHeaderValue(Map<String, String> parameters) {
-		String wwwAuthenticate = "Bearer";
-		if (!parameters.isEmpty()) {
-			wwwAuthenticate += parameters.entrySet().stream()
-					.map(attribute -> attribute.getKey() + "=\"" + attribute.getValue() + "\"")
-					.collect(Collectors.joining(", ", " ", ""));
-		}
-
-		return wwwAuthenticate;
+		return wwwAuthenticate.toString();
 	}
 }

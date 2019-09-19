@@ -17,7 +17,7 @@ package org.springframework.security.web.authentication.preauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -30,7 +30,6 @@ import javax.servlet.http.HttpServletRequest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -117,7 +116,7 @@ public class AbstractPreAuthenticatedProcessingFilterTests {
 
 	// SEC-2045
 	@Test
-	public void testAfterPropertiesSetInvokesSuper() throws Exception {
+	public void testAfterPropertiesSetInvokesSuper() {
 		ConcretePreAuthenticatedProcessingFilter filter = new ConcretePreAuthenticatedProcessingFilter();
 		AuthenticationManager am = mock(AuthenticationManager.class);
 		filter.setAuthenticationManager(am);
@@ -385,8 +384,7 @@ public class AbstractPreAuthenticatedProcessingFilterTests {
 				grantAccess);
 	}
 
-	private static ConcretePreAuthenticatedProcessingFilter getFilter(boolean grantAccess)
-			throws Exception {
+	private static ConcretePreAuthenticatedProcessingFilter getFilter(boolean grantAccess) {
 		ConcretePreAuthenticatedProcessingFilter filter = new ConcretePreAuthenticatedProcessingFilter();
 		AuthenticationManager am = mock(AuthenticationManager.class);
 
@@ -396,12 +394,7 @@ public class AbstractPreAuthenticatedProcessingFilterTests {
 		}
 		else {
 			when(am.authenticate(any(Authentication.class))).thenAnswer(
-					new Answer<Authentication>() {
-						public Authentication answer(InvocationOnMock invocation)
-								throws Throwable {
-							return (Authentication) invocation.getArguments()[0];
-						}
-					});
+					(Answer<Authentication>) invocation -> (Authentication) invocation.getArguments()[0]);
 		}
 
 		filter.setAuthenticationManager(am);

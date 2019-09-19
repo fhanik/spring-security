@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.GenericApplicationListenerAdapter;
 import org.springframework.context.event.SmartApplicationListener;
 import org.springframework.security.authentication.AuthenticationTrustResolver;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -34,6 +35,7 @@ import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
+import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.ConcurrentSessionControlAuthenticationStrategy;
@@ -53,6 +55,7 @@ import org.springframework.security.web.session.SessionManagementFilter;
 import org.springframework.security.web.session.SimpleRedirectInvalidSessionStrategy;
 import org.springframework.security.web.session.SimpleRedirectSessionInformationExpiredStrategy;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Allows configuring session management.
@@ -87,6 +90,7 @@ import org.springframework.util.Assert;
  * </ul>
  *
  * @author Rob Winch
+ * @author Onur Kagan Ozcan
  * @since 3.2
  * @see SessionManagementFilter
  * @see ConcurrentSessionFilter
@@ -212,8 +216,7 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 
 	/**
 	 * Allows explicitly specifying the {@link SessionAuthenticationStrategy}.
-	 * The default is to use {@link SessionFixationProtectionStrategy} for Servlet 3.1 or
-	 * {@link ChangeSessionIdAuthenticationStrategy} for Servlet 3.1+.
+	 * The default is to use {@link ChangeSessionIdAuthenticationStrategy}.
 	 * If restricting the maximum number of sessions is configured, then
 	 * {@link CompositeSessionAuthenticationStrategy} delegating to
 	 * {@link ConcurrentSessionControlAuthenticationStrategy},
@@ -251,6 +254,18 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	}
 
 	/**
+	 * Allows configuring session fixation protection.
+	 *
+	 * @param sessionFixationCustomizer the {@link Customizer} to provide more options for
+	 * the {@link SessionFixationConfigurer}
+	 * @return the {@link SessionManagementConfigurer} for further customizations
+	 */
+	public SessionManagementConfigurer<H> sessionFixation(Customizer<SessionFixationConfigurer> sessionFixationCustomizer) {
+		sessionFixationCustomizer.customize(new SessionFixationConfigurer());
+		return this;
+	}
+
+	/**
 	 * Controls the maximum number of sessions for a user. The default is to allow any
 	 * number of users.
 	 * @param maximumSessions the maximum number of sessions for a user
@@ -259,6 +274,19 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	public ConcurrencyControlConfigurer maximumSessions(int maximumSessions) {
 		this.maximumSessions = maximumSessions;
 		return new ConcurrencyControlConfigurer();
+	}
+
+	/**
+	 * Controls the maximum number of sessions for a user. The default is to allow any
+	 * number of users.
+	 *
+	 * @param sessionConcurrencyCustomizer the {@link Customizer} to provide more options for
+	 * the {@link ConcurrencyControlConfigurer}
+	 * @return the {@link SessionManagementConfigurer} for further customizations
+	 */
+	public SessionManagementConfigurer<H> sessionConcurrency(Customizer<ConcurrencyControlConfigurer> sessionConcurrencyCustomizer) {
+		sessionConcurrencyCustomizer.customize(new ConcurrencyControlConfigurer());
+		return this;
 	}
 
 	/**
@@ -305,13 +333,11 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 
 		/**
 		 * Specifies that the Servlet container-provided session fixation protection
-		 * should be used. When a session authenticates, the Servlet 3.1 method
+		 * should be used. When a session authenticates, the Servlet method
 		 * {@code HttpServletRequest#changeSessionId()} is called to change the session ID
-		 * and retain all session attributes. Using this option in a Servlet 3.0 or older
-		 * container results in an {@link IllegalStateException}.
+		 * and retain all session attributes.
 		 *
 		 * @return the {@link SessionManagementConfigurer} for further customizations
-		 * @throws IllegalStateException if the container is not Servlet 3.1 or newer.
 		 */
 		public SessionManagementConfigurer<H> changeSessionId() {
 			setSessionFixationAuthenticationStrategy(
@@ -342,6 +368,18 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	public final class ConcurrencyControlConfigurer {
 
 		/**
+		 * Controls the maximum number of sessions for a user. The default is to allow any
+		 * number of users.
+		 *
+		 * @param maximumSessions the maximum number of sessions for a user
+		 * @return the {@link ConcurrencyControlConfigurer} for further customizations
+		 */
+		public ConcurrencyControlConfigurer maximumSessions(int maximumSessions) {
+			SessionManagementConfigurer.this.maximumSessions = maximumSessions;
+			return this;
+		}
+
+		/**
 		 * The URL to redirect to if a user tries to access a resource and their session
 		 * has been expired due to too many sessions for the current user. The default is
 		 * to write a simple error message to the response.
@@ -354,6 +392,13 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 			return this;
 		}
 
+		/**
+		 * Determines the behaviour when an expired session is detected.
+		 *
+		 * @param expiredSessionStrategy the {@link SessionInformationExpiredStrategy} to
+		 * use when an expired session is detected.
+		 * @return the {@link ConcurrencyControlConfigurer} for further customizations
+		 */
 		public ConcurrencyControlConfigurer expiredSessionStrategy(
 				SessionInformationExpiredStrategy expiredSessionStrategy) {
 			SessionManagementConfigurer.this.expiredSessionStrategy = expiredSessionStrategy;
@@ -406,7 +451,7 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	}
 
 	@Override
-	public void init(H http) throws Exception {
+	public void init(H http) {
 		SecurityContextRepository securityContextRepository = http
 				.getSharedObject(SecurityContextRepository.class);
 		boolean stateless = isStateless();
@@ -443,7 +488,7 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	}
 
 	@Override
-	public void configure(H http) throws Exception {
+	public void configure(H http) {
 		SecurityContextRepository securityContextRepository = http
 				.getSharedObject(SecurityContextRepository.class);
 		SessionManagementFilter sessionManagementFilter = new SessionManagementFilter(
@@ -470,21 +515,30 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 
 		http.addFilter(sessionManagementFilter);
 		if (isConcurrentSessionControlEnabled()) {
-			ConcurrentSessionFilter concurrentSessionFilter = createConccurencyFilter(http);
+			ConcurrentSessionFilter concurrentSessionFilter = createConcurrencyFilter(http);
 
 			concurrentSessionFilter = postProcess(concurrentSessionFilter);
 			http.addFilter(concurrentSessionFilter);
 		}
 	}
 
-	private ConcurrentSessionFilter createConccurencyFilter(H http) {
+	private ConcurrentSessionFilter createConcurrencyFilter(H http) {
 		SessionInformationExpiredStrategy expireStrategy = getExpiredSessionStrategy();
 		SessionRegistry sessionRegistry = getSessionRegistry(http);
+		ConcurrentSessionFilter concurrentSessionFilter;
 		if (expireStrategy == null) {
-			return new ConcurrentSessionFilter(sessionRegistry);
+			concurrentSessionFilter = new ConcurrentSessionFilter(sessionRegistry);
+		} else {
+			concurrentSessionFilter = new ConcurrentSessionFilter(sessionRegistry, expireStrategy);
 		}
-
-		return new ConcurrentSessionFilter(sessionRegistry, expireStrategy);
+		LogoutConfigurer<H> logoutConfigurer = http.getConfigurer(LogoutConfigurer.class);
+		if (logoutConfigurer != null) {
+			List<LogoutHandler> logoutHandlers = logoutConfigurer.getLogoutHandlers();
+			if (!CollectionUtils.isEmpty(logoutHandlers)) {
+				concurrentSessionFilter.setLogoutHandlers(logoutHandlers);
+			}
+		}
+		return concurrentSessionFilter;
 	}
 
 	/**
@@ -664,11 +718,6 @@ public final class SessionManagementConfigurer<H extends HttpSecurityBuilder<H>>
 	 * @return the default {@link SessionAuthenticationStrategy} for session fixation
 	 */
 	private static SessionAuthenticationStrategy createDefaultSessionFixationProtectionStrategy() {
-		try {
 			return new ChangeSessionIdAuthenticationStrategy();
-		}
-		catch (IllegalStateException e) {
-			return new SessionFixationProtectionStrategy();
-		}
 	}
 }

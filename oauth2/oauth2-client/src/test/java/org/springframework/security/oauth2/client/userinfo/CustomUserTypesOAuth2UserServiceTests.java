@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,12 @@
  */
 package org.springframework.security.oauth2.client.userinfo;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.After;
@@ -22,42 +28,30 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.springframework.security.oauth2.client.registration.TestClientRegistrations.clientRegistration;
+import static org.springframework.security.oauth2.core.TestOAuth2AccessTokens.noScopes;
 
 /**
  * Tests for {@link CustomUserTypesOAuth2UserService}.
  *
  * @author Joe Grandja
+ * @author Eddú Meléndez
  */
-@PowerMockIgnore("okhttp3.*")
-@PrepareForTest(ClientRegistration.class)
-@RunWith(PowerMockRunner.class)
 public class CustomUserTypesOAuth2UserServiceTests {
-	private ClientRegistration clientRegistration;
-	private ClientRegistration.ProviderDetails providerDetails;
-	private ClientRegistration.ProviderDetails.UserInfoEndpoint userInfoEndpoint;
+	private ClientRegistration.Builder clientRegistrationBuilder;
 	private OAuth2AccessToken accessToken;
 	private CustomUserTypesOAuth2UserService userService;
 	private MockWebServer server;
@@ -69,14 +63,9 @@ public class CustomUserTypesOAuth2UserServiceTests {
 	public void setUp() throws Exception {
 		this.server = new MockWebServer();
 		this.server.start();
-		this.clientRegistration = mock(ClientRegistration.class);
-		this.providerDetails = mock(ClientRegistration.ProviderDetails.class);
-		this.userInfoEndpoint = mock(ClientRegistration.ProviderDetails.UserInfoEndpoint.class);
-		when(this.clientRegistration.getProviderDetails()).thenReturn(this.providerDetails);
-		when(this.providerDetails.getUserInfoEndpoint()).thenReturn(this.userInfoEndpoint);
 		String registrationId = "client-registration-id-1";
-		when(this.clientRegistration.getRegistrationId()).thenReturn(registrationId);
-		this.accessToken = mock(OAuth2AccessToken.class);
+		this.clientRegistrationBuilder = clientRegistration().registrationId(registrationId);
+		this.accessToken = noScopes();
 
 		Map<String, Class<? extends OAuth2User>> customUserTypes = new HashMap<>();
 		customUserTypes.put(registrationId, CustomOAuth2User.class);
@@ -120,9 +109,10 @@ public class CustomUserTypesOAuth2UserServiceTests {
 
 	@Test
 	public void loadUserWhenCustomUserTypeNotFoundThenReturnNull() {
-		when(this.clientRegistration.getRegistrationId()).thenReturn("other-client-registration-id-1");
+		ClientRegistration clientRegistration =
+				clientRegistration().registrationId("other-client-registration-id-1").build();
 
-		OAuth2User user = this.userService.loadUser(new OAuth2UserRequest(this.clientRegistration, this.accessToken));
+		OAuth2User user = this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
 		assertThat(user).isNull();
 	}
 
@@ -138,17 +128,17 @@ public class CustomUserTypesOAuth2UserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		OAuth2User user = this.userService.loadUser(new OAuth2UserRequest(this.clientRegistration, this.accessToken));
+		OAuth2User user = this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
 
 		assertThat(user.getName()).isEqualTo("first last");
 		assertThat(user.getAttributes().size()).isEqualTo(4);
-		assertThat(user.getAttributes().get("id")).isEqualTo("12345");
-		assertThat(user.getAttributes().get("name")).isEqualTo("first last");
-		assertThat(user.getAttributes().get("login")).isEqualTo("user1");
-		assertThat(user.getAttributes().get("email")).isEqualTo("user1@example.com");
+		assertThat((String) user.getAttribute("id")).isEqualTo("12345");
+		assertThat((String) user.getAttribute("name")).isEqualTo("first last");
+		assertThat((String) user.getAttribute("login")).isEqualTo("user1");
+		assertThat((String) user.getAttribute("email")).isEqualTo("user1@example.com");
 
 		assertThat(user.getAuthorities().size()).isEqualTo(1);
 		assertThat(user.getAuthorities().iterator().next().getAuthority()).isEqualTo("ROLE_USER");
@@ -169,10 +159,10 @@ public class CustomUserTypesOAuth2UserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OAuth2UserRequest(this.clientRegistration, this.accessToken));
+		this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
 	}
 
 	@Test
@@ -184,10 +174,10 @@ public class CustomUserTypesOAuth2UserServiceTests {
 
 		String userInfoUri = this.server.url("/user").toString();
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OAuth2UserRequest(this.clientRegistration, this.accessToken));
+		this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
 	}
 
 	@Test
@@ -195,12 +185,20 @@ public class CustomUserTypesOAuth2UserServiceTests {
 		this.exception.expect(OAuth2AuthenticationException.class);
 		this.exception.expectMessage(containsString("[invalid_user_info_response] An error occurred while attempting to retrieve the UserInfo Resource"));
 
-		String userInfoUri = "http://invalid-provider.com/user";
+		String userInfoUri = "https://invalid-provider.com/user";
 
-		when(this.userInfoEndpoint.getUri()).thenReturn(userInfoUri);
-		when(this.accessToken.getTokenValue()).thenReturn("access-token");
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
 
-		this.userService.loadUser(new OAuth2UserRequest(this.clientRegistration, this.accessToken));
+		this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
+	}
+
+	private ClientRegistration.Builder withRegistrationId(String registrationId) {
+		return ClientRegistration
+				.withRegistrationId(registrationId)
+				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+				.clientId("client")
+				.tokenUri("/token");
 	}
 
 	private MockResponse jsonResponse(String json) {

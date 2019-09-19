@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -215,12 +216,25 @@ public class DelegatingPasswordEncoderTests {
 	}
 
 	@Test
-	public void upgradeEncodingWhenSameIdThenFalse() {
+	public void upgradeEncodingWhenSameIdAndEncoderFalseThenEncoderDecidesFalse() {
 		assertThat(this.passwordEncoder.upgradeEncoding(this.bcryptEncodedPassword)).isFalse();
+
+		verify(bcrypt).upgradeEncoding(this.encodedPassword);
+	}
+
+	@Test
+	public void upgradeEncodingWhenSameIdAndEncoderTrueThenEncoderDecidesTrue() {
+		when(this.bcrypt.upgradeEncoding(any())).thenReturn(true);
+
+		assertThat(this.passwordEncoder.upgradeEncoding(this.bcryptEncodedPassword)).isTrue();
+
+		verify(bcrypt).upgradeEncoding(this.encodedPassword);
 	}
 
 	@Test
 	public void upgradeEncodingWhenDifferentIdThenTrue() {
 		assertThat(this.passwordEncoder.upgradeEncoding(this.noopEncodedPassword)).isTrue();
+
+		verifyZeroInteractions(bcrypt);
 	}
 }

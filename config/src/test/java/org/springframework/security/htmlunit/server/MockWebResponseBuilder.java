@@ -42,7 +42,7 @@ final class MockWebResponseBuilder {
 	private final FluxExchangeResult<String> exchangeResult;
 
 
-	public MockWebResponseBuilder(long startTime, WebRequest webRequest, FluxExchangeResult<String> exchangeResult) {
+	MockWebResponseBuilder(long startTime, WebRequest webRequest, FluxExchangeResult<String> exchangeResult) {
 		Assert.notNull(webRequest, "WebRequest must not be null");
 		Assert.notNull(exchangeResult, "FluxExchangeResult must not be null");
 		this.startTime = startTime;
@@ -57,7 +57,7 @@ final class MockWebResponseBuilder {
 		return new WebResponse(webResponseData, this.webRequest, endTime - this.startTime);
 	}
 
-	private WebResponseData webResponseData() throws IOException {
+	private WebResponseData webResponseData() {
 		List<NameValuePair> responseHeaders = responseHeaders();
 		HttpStatus status = this.exchangeResult.getStatus();
 		return new WebResponseData(this.exchangeResult.getResponseBodyContent(), status.value(), status.getReasonPhrase(), responseHeaders);

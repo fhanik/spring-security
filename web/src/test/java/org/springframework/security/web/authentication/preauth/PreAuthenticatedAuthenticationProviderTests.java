@@ -52,7 +52,7 @@ public class PreAuthenticatedAuthenticationProviderTests {
 	}
 
 	@Test
-	public final void nullPrincipalReturnsNullAuthentication() throws Exception {
+	public final void nullPrincipalReturnsNullAuthentication() {
 		PreAuthenticatedAuthenticationProvider provider = new PreAuthenticatedAuthenticationProvider();
 		Authentication request = new PreAuthenticatedAuthenticationToken(null,
 				"dummyPwd");
@@ -115,8 +115,7 @@ public class PreAuthenticatedAuthenticationProviderTests {
 		assertThat(333).isEqualTo(provider.getOrder());
 	}
 
-	private PreAuthenticatedAuthenticationProvider getProvider(UserDetails aUserDetails)
-			throws Exception {
+	private PreAuthenticatedAuthenticationProvider getProvider(UserDetails aUserDetails) {
 		PreAuthenticatedAuthenticationProvider result = new PreAuthenticatedAuthenticationProvider();
 		result.setPreAuthenticatedUserDetailsService(
 				getPreAuthenticatedUserDetailsService(aUserDetails));
@@ -126,17 +125,13 @@ public class PreAuthenticatedAuthenticationProviderTests {
 
 	private AuthenticationUserDetailsService<PreAuthenticatedAuthenticationToken> getPreAuthenticatedUserDetailsService(
 			final UserDetails aUserDetails) {
-		return new AuthenticationUserDetailsService<PreAuthenticatedAuthenticationToken>() {
-
-			public UserDetails loadUserDetails(PreAuthenticatedAuthenticationToken token)
-					throws UsernameNotFoundException {
-				if (aUserDetails != null
-						&& aUserDetails.getUsername().equals(token.getName())) {
-					return aUserDetails;
-				}
-
-				throw new UsernameNotFoundException("notfound");
+		return token -> {
+			if (aUserDetails != null
+					&& aUserDetails.getUsername().equals(token.getName())) {
+				return aUserDetails;
 			}
+
+			throw new UsernameNotFoundException("notfound");
 		};
 	}
 

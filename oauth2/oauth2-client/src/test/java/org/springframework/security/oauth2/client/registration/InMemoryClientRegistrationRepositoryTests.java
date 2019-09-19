@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for {@link InMemoryClientRegistrationRepository}.
  *
  * @author Rob Winch
+ * @author Vedran Pavic
  * @since 5.0
  */
 public class InMemoryClientRegistrationRepositoryTests {
@@ -45,6 +48,17 @@ public class InMemoryClientRegistrationRepositoryTests {
 	public void constructorListClientRegistrationWhenEmptyThenIllegalArgumentException() {
 		List<ClientRegistration> registrations = Collections.emptyList();
 		new InMemoryClientRegistrationRepository(registrations);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void constructorMapClientRegistrationWhenNullThenIllegalArgumentException() {
+		new InMemoryClientRegistrationRepository((Map<String, ClientRegistration>) null);
+	}
+
+	@Test
+	public void constructorMapClientRegistrationWhenEmptyMapThenRepositoryIsEmpty() {
+		InMemoryClientRegistrationRepository clients = new InMemoryClientRegistrationRepository(new HashMap<>());
+		assertThat(clients).isEmpty();
 	}
 
 	@Test(expected = IllegalStateException.class)
@@ -78,6 +92,6 @@ public class InMemoryClientRegistrationRepositoryTests {
 
 	@Test
 	public void iteratorWhenGetThenContainsAll() {
-		assertThat(this.clients.iterator()).containsOnly(this.registration);
+		assertThat(this.clients).containsOnly(this.registration);
 	}
 }

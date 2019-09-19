@@ -17,7 +17,7 @@
 package org.springframework.security.oauth2.client.userinfo;
 
 
-import java.net.UnknownHostException;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +28,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.AuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
@@ -117,26 +119,28 @@ public class DefaultReactiveOAuth2UserService implements ReactiveOAuth2UserServi
 			}
 			Mono<Map<String, Object>> userAttributes = requestHeadersSpec
 					.retrieve()
-					.onStatus(s -> s != HttpStatus.OK, response -> {
-						return parse(response).map(userInfoErrorResponse -> {
-							String description = userInfoErrorResponse.getErrorObject().getDescription();
-							OAuth2Error oauth2Error = new OAuth2Error(
-									INVALID_USER_INFO_RESPONSE_ERROR_CODE, description,
-									null);
-							throw new OAuth2AuthenticationException(oauth2Error,
-									oauth2Error.toString());
-						});
-					})
+					.onStatus(s -> s != HttpStatus.OK, response -> parse(response).map(userInfoErrorResponse -> {
+						String description = userInfoErrorResponse.getErrorObject().getDescription();
+						OAuth2Error oauth2Error = new OAuth2Error(
+								INVALID_USER_INFO_RESPONSE_ERROR_CODE, description,
+								null);
+						throw new OAuth2AuthenticationException(oauth2Error,
+								oauth2Error.toString());
+					}))
 					.bodyToMono(typeReference);
 
 			return userAttributes.map(attrs -> {
 				GrantedAuthority authority = new OAuth2UserAuthority(attrs);
 				Set<GrantedAuthority> authorities = new HashSet<>();
 				authorities.add(authority);
+				OAuth2AccessToken token = userRequest.getAccessToken();
+				for (String scope : token.getScopes()) {
+					authorities.add(new SimpleGrantedAuthority("SCOPE_" + scope));
+				}
 
 				return new DefaultOAuth2User(authorities, attrs, userNameAttributeName);
 			})
-			.onErrorMap(UnknownHostException.class, t -> new AuthenticationServiceException("Unable to access the userInfoEndpoint " + userInfoUri, t))
+			.onErrorMap(e -> e instanceof IOException, t -> new AuthenticationServiceException("Unable to access the userInfoEndpoint " + userInfoUri, t))
 			.onErrorMap(t -> !(t instanceof AuthenticationServiceException), t -> {
 				OAuth2Error oauth2Error = new OAuth2Error(INVALID_USER_INFO_RESPONSE_ERROR_CODE,  "An error occurred reading the UserInfo Success response: " + t.getMessage(), null);
 				return new OAuth2AuthenticationException(oauth2Error, oauth2Error.toString(), t);

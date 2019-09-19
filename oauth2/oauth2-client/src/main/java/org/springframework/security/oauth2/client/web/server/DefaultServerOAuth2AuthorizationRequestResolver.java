@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,28 @@ package org.springframework.security.oauth2.client.web.server;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.core.endpoint.PkceParameterNames;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,14 +65,17 @@ public class DefaultServerOAuth2AuthorizationRequestResolver
 	/**
 	 * The default pattern used to resolve the {@link ClientRegistration#getRegistrationId()}
 	 */
-	public static final String DEFAULT_AUTHORIZATION_REQUEST_PATTERN = "/oauth2/authorization/{" + DEFAULT_REGISTRATION_ID_URI_VARIABLE_NAME
-			+ "}";
+	public static final String DEFAULT_AUTHORIZATION_REQUEST_PATTERN = "/oauth2/authorization/{" + DEFAULT_REGISTRATION_ID_URI_VARIABLE_NAME + "}";
+
+	private static final char PATH_DELIMITER = '/';
 
 	private final ServerWebExchangeMatcher authorizationRequestMatcher;
 
 	private final ReactiveClientRegistrationRepository clientRegistrationRepository;
 
 	private final StringKeyGenerator stateGenerator = new Base64StringKeyGenerator(Base64.getUrlEncoder());
+
+	private final StringKeyGenerator codeVerifierGenerator = new Base64StringKeyGenerator(Base64.getUrlEncoder().withoutPadding(), 96);
 
 	/**
 	 * Creates a new instance
@@ -115,16 +124,19 @@ public class DefaultServerOAuth2AuthorizationRequestResolver
 
 	private OAuth2AuthorizationRequest authorizationRequest(ServerWebExchange exchange,
 			ClientRegistration clientRegistration) {
-		String redirectUriStr = this
-					.expandRedirectUri(exchange.getRequest(), clientRegistration);
+		String redirectUriStr = expandRedirectUri(exchange.getRequest(), clientRegistration);
 
-		Map<String, Object> additionalParameters = new HashMap<>();
-		additionalParameters.put(OAuth2ParameterNames.REGISTRATION_ID,
-				clientRegistration.getRegistrationId());
+		Map<String, Object> attributes = new HashMap<>();
+		attributes.put(OAuth2ParameterNames.REGISTRATION_ID, clientRegistration.getRegistrationId());
 
 		OAuth2AuthorizationRequest.Builder builder;
 		if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(clientRegistration.getAuthorizationGrantType())) {
 			builder = OAuth2AuthorizationRequest.authorizationCode();
+			if (ClientAuthenticationMethod.NONE.equals(clientRegistration.getClientAuthenticationMethod())) {
+				Map<String, Object> additionalParameters = new HashMap<>();
+				addPkceParameters(attributes, additionalParameters);
+				builder.additionalParameters(additionalParameters);
+			}
 		}
 		else if (AuthorizationGrantType.IMPLICIT.equals(clientRegistration.getAuthorizationGrantType())) {
 			builder = OAuth2AuthorizationRequest.implicit();
@@ -139,30 +151,89 @@ public class DefaultServerOAuth2AuthorizationRequestResolver
 				.authorizationUri(clientRegistration.getProviderDetails().getAuthorizationUri())
 				.redirectUri(redirectUriStr).scopes(clientRegistration.getScopes())
 				.state(this.stateGenerator.generateKey())
-				.additionalParameters(additionalParameters)
+				.attributes(attributes)
 				.build();
 	}
 
-	private String expandRedirectUri(ServerHttpRequest request, ClientRegistration clientRegistration) {
-		// Supported URI variables -> baseUrl, action, registrationId
-		// Used in -> CommonOAuth2Provider.DEFAULT_REDIRECT_URL = "{baseUrl}/{action}/oauth2/code/{registrationId}"
+	/**
+	 * Expands the {@link ClientRegistration#getRedirectUriTemplate()} with following provided variables:<br/>
+	 * - baseUrl (e.g. https://localhost/app) <br/>
+	 * - baseScheme (e.g. https) <br/>
+	 * - baseHost (e.g. localhost) <br/>
+	 * - basePort (e.g. :8080) <br/>
+	 * - basePath (e.g. /app) <br/>
+	 * - registrationId (e.g. google) <br/>
+	 * - action (e.g. login) <br/>
+	 * <p/>
+	 * Null variables are provided as empty strings.
+	 * <p/>
+	 * Default redirectUriTemplate is: {@link org.springframework.security.config.oauth2.client}.CommonOAuth2Provider#DEFAULT_REDIRECT_URL
+	 *
+	 * @return expanded URI
+	 */
+	private static String expandRedirectUri(ServerHttpRequest request, ClientRegistration clientRegistration) {
 		Map<String, String> uriVariables = new HashMap<>();
 		uriVariables.put("registrationId", clientRegistration.getRegistrationId());
 
-		String baseUrl = UriComponentsBuilder.fromHttpRequest(new ServerHttpRequestDecorator(request))
+		UriComponents uriComponents = UriComponentsBuilder.fromUri(request.getURI())
 				.replacePath(request.getPath().contextPath().value())
 				.replaceQuery(null)
-				.build()
-				.toUriString();
-		uriVariables.put("baseUrl", baseUrl);
-
-		if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(clientRegistration.getAuthorizationGrantType())) {
-			String loginAction = "login";
-			uriVariables.put("action", loginAction);
+				.fragment(null)
+				.build();
+		String scheme = uriComponents.getScheme();
+		uriVariables.put("baseScheme", scheme == null ? "" : scheme);
+		String host = uriComponents.getHost();
+		uriVariables.put("baseHost", host == null ? "" : host);
+		// following logic is based on HierarchicalUriComponents#toUriString()
+		int port = uriComponents.getPort();
+		uriVariables.put("basePort", port == -1 ? "" : ":" + port);
+		String path = uriComponents.getPath();
+		if (StringUtils.hasLength(path)) {
+			if (path.charAt(0) != PATH_DELIMITER) {
+				path = PATH_DELIMITER + path;
+			}
 		}
+		uriVariables.put("basePath", path == null ? "" : path);
+		uriVariables.put("baseUrl", uriComponents.toUriString());
+
+		String action = "";
+		if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(clientRegistration.getAuthorizationGrantType())) {
+			action = "login";
+		}
+		uriVariables.put("action", action);
 
 		return UriComponentsBuilder.fromUriString(clientRegistration.getRedirectUriTemplate())
 				.buildAndExpand(uriVariables)
 				.toUriString();
+	}
+
+	/**
+	 * Creates and adds additional PKCE parameters for use in the OAuth 2.0 Authorization and Access Token Requests
+	 *
+	 * @param attributes where {@link PkceParameterNames#CODE_VERIFIER} is stored for the token request
+	 * @param additionalParameters where {@link PkceParameterNames#CODE_CHALLENGE} and, usually,
+	 * {@link PkceParameterNames#CODE_CHALLENGE_METHOD} are added to be used in the authorization request.
+	 *
+	 * @since 5.2
+	 * @see <a target="_blank" href="https://tools.ietf.org/html/rfc7636#section-1.1">1.1.  Protocol Flow</a>
+	 * @see <a target="_blank" href="https://tools.ietf.org/html/rfc7636#section-4.1">4.1.  Client Creates a Code Verifier</a>
+	 * @see <a target="_blank" href="https://tools.ietf.org/html/rfc7636#section-4.2">4.2.  Client Creates the Code Challenge</a>
+	 */
+	private void addPkceParameters(Map<String, Object> attributes, Map<String, Object> additionalParameters) {
+		String codeVerifier = this.codeVerifierGenerator.generateKey();
+		attributes.put(PkceParameterNames.CODE_VERIFIER, codeVerifier);
+		try {
+			String codeChallenge = createCodeChallenge(codeVerifier);
+			additionalParameters.put(PkceParameterNames.CODE_CHALLENGE, codeChallenge);
+			additionalParameters.put(PkceParameterNames.CODE_CHALLENGE_METHOD, "S256");
+		} catch (NoSuchAlgorithmException e) {
+			additionalParameters.put(PkceParameterNames.CODE_CHALLENGE, codeVerifier);
+		}
+	}
+
+	private String createCodeChallenge(String codeVerifier) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("SHA-256");
+		byte[] digest = md.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
 	}
 }

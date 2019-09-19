@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,19 @@
  */
 package org.springframework.security.oauth2.client.web;
 
+import java.util.HashMap;
+import java.util.Map;
+import javax.servlet.FilterChain;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -42,33 +46,31 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationExchange;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.security.web.util.UrlUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.servlet.FilterChain;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.oauth2.core.endpoint.TestOAuth2AuthorizationExchanges.success;
 
 /**
  * Tests for {@link OAuth2LoginAuthenticationFilter}.
  *
  * @author Joe Grandja
  */
-@PowerMockIgnore("javax.security.*")
-@PrepareForTest({OAuth2AuthorizationExchange.class, OAuth2LoginAuthenticationFilter.class})
-@RunWith(PowerMockRunner.class)
 public class OAuth2LoginAuthenticationFilterTests {
 	private ClientRegistration registration1;
 	private ClientRegistration registration2;
@@ -79,6 +81,7 @@ public class OAuth2LoginAuthenticationFilterTests {
 	private AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository;
 	private AuthenticationFailureHandler failureHandler;
 	private AuthenticationManager authenticationManager;
+	private AuthenticationDetailsSource authenticationDetailsSource;
 	private OAuth2LoginAuthenticationToken loginAuthentication;
 	private OAuth2LoginAuthenticationFilter filter;
 
@@ -93,11 +96,13 @@ public class OAuth2LoginAuthenticationFilterTests {
 		this.authorizationRequestRepository = new HttpSessionOAuth2AuthorizationRequestRepository();
 		this.failureHandler = mock(AuthenticationFailureHandler.class);
 		this.authenticationManager = mock(AuthenticationManager.class);
+		this.authenticationDetailsSource = mock(AuthenticationDetailsSource.class);
 		this.filter = spy(new OAuth2LoginAuthenticationFilter(this.clientRegistrationRepository,
 				this.authorizedClientRepository, OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI));
 		this.filter.setAuthorizationRequestRepository(this.authorizationRequestRepository);
 		this.filter.setAuthenticationFailureHandler(this.failureHandler);
 		this.filter.setAuthenticationManager(this.authenticationManager);
+		this.filter.setAuthenticationDetailsSource(this.authenticationDetailsSource);
 	}
 
 	@Test
@@ -308,7 +313,7 @@ public class OAuth2LoginAuthenticationFilterTests {
 		String state = "state";
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", requestUri);
 		request.setScheme("http");
-		request.setServerName("example.com");
+		request.setServerName("localhost");
 		request.setServerPort(80);
 		request.setServletPath(requestUri);
 		request.addParameter(OAuth2ParameterNames.CODE, "code");
@@ -329,7 +334,7 @@ public class OAuth2LoginAuthenticationFilterTests {
 		OAuth2AuthorizationRequest authorizationRequest = authentication.getAuthorizationExchange().getAuthorizationRequest();
 		OAuth2AuthorizationResponse authorizationResponse = authentication.getAuthorizationExchange().getAuthorizationResponse();
 
-		String expectedRedirectUri = "http://example.com/login/oauth2/code/registration-id-2";
+		String expectedRedirectUri = "http://localhost/login/oauth2/code/registration-id-2";
 		assertThat(authorizationRequest.getRedirectUri()).isEqualTo(expectedRedirectUri);
 		assertThat(authorizationResponse.getRedirectUri()).isEqualTo(expectedRedirectUri);
 	}
@@ -400,17 +405,40 @@ public class OAuth2LoginAuthenticationFilterTests {
 		assertThat(authorizationResponse.getRedirectUri()).isEqualTo(expectedRedirectUri);
 	}
 
+	// gh-6866
+	@Test
+	public void attemptAuthenticationShouldSetAuthenticationDetailsOnAuthenticationResult() throws Exception {
+		String requestUri = "/login/oauth2/code/" + this.registration1.getRegistrationId();
+		String state = "state";
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", requestUri);
+		request.setServletPath(requestUri);
+		request.addParameter(OAuth2ParameterNames.CODE, "code");
+		request.addParameter(OAuth2ParameterNames.STATE, state);
+
+		WebAuthenticationDetails webAuthenticationDetails = mock(WebAuthenticationDetails.class);
+		when(authenticationDetailsSource.buildDetails(any())).thenReturn(webAuthenticationDetails);
+
+		MockHttpServletResponse response = new MockHttpServletResponse();
+
+		this.setUpAuthorizationRequest(request, response, this.registration2, state);
+		this.setUpAuthenticationResult(this.registration2);
+
+		Authentication result = this.filter.attemptAuthentication(request, response);
+
+		assertThat(result.getDetails()).isEqualTo(webAuthenticationDetails);
+	}
+
 	private void setUpAuthorizationRequest(HttpServletRequest request, HttpServletResponse response,
 											ClientRegistration registration, String state) {
-		Map<String, Object> additionalParameters = new HashMap<>();
-		additionalParameters.put(OAuth2ParameterNames.REGISTRATION_ID, registration.getRegistrationId());
+		Map<String, Object> attributes = new HashMap<>();
+		attributes.put(OAuth2ParameterNames.REGISTRATION_ID, registration.getRegistrationId());
 		OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
 				.authorizationUri(registration.getProviderDetails().getAuthorizationUri())
 				.clientId(registration.getClientId())
 				.redirectUri(expandRedirectUri(request, registration))
 				.scopes(registration.getScopes())
 				.state(state)
-				.additionalParameters(additionalParameters)
+				.attributes(attributes)
 				.build();
 		this.authorizationRequestRepository.saveAuthorizationRequest(authorizationRequest, request, response);
 	}
@@ -440,7 +468,7 @@ public class OAuth2LoginAuthenticationFilterTests {
 		when(this.loginAuthentication.getName()).thenReturn(this.principalName1);
 		when(this.loginAuthentication.getAuthorities()).thenReturn(AuthorityUtils.createAuthorityList("ROLE_USER"));
 		when(this.loginAuthentication.getClientRegistration()).thenReturn(registration);
-		when(this.loginAuthentication.getAuthorizationExchange()).thenReturn(mock(OAuth2AuthorizationExchange.class));
+		when(this.loginAuthentication.getAuthorizationExchange()).thenReturn(success());
 		when(this.loginAuthentication.getAccessToken()).thenReturn(mock(OAuth2AccessToken.class));
 		when(this.loginAuthentication.getRefreshToken()).thenReturn(mock(OAuth2RefreshToken.class));
 		when(this.loginAuthentication.isAuthenticated()).thenReturn(true);

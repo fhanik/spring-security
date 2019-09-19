@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,45 +33,83 @@ import org.springframework.security.core.userdetails.ReactiveUserDetailsPassword
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.reactive.result.method.annotation.AuthenticationPrincipalArgumentResolver;
+import org.springframework.security.web.reactive.result.method.annotation.CurrentSecurityContextArgumentResolver;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
 /**
  * @author Rob Winch
+ * @author Dan Zheng
  * @since 5.0
  */
-@Configuration
-class ServerHttpSecurityConfiguration implements WebFluxConfigurer {
+@Configuration(proxyBeanMethods = false)
+class ServerHttpSecurityConfiguration {
 	private static final String BEAN_NAME_PREFIX = "org.springframework.security.config.annotation.web.reactive.HttpSecurityConfiguration.";
 	private static final String HTTPSECURITY_BEAN_NAME = BEAN_NAME_PREFIX + "httpSecurity";
 
-	@Autowired(required = false)
 	private ReactiveAdapterRegistry adapterRegistry = new ReactiveAdapterRegistry();
 
-	@Autowired(required = false)
 	private ReactiveAuthenticationManager authenticationManager;
 
-	@Autowired(required = false)
 	private ReactiveUserDetailsService reactiveUserDetailsService;
 
-	@Autowired(required = false)
 	private PasswordEncoder passwordEncoder;
 
-	@Autowired(required = false)
 	private ReactiveUserDetailsPasswordService userDetailsPasswordService;
 
 	@Autowired(required = false)
 	private BeanFactory beanFactory;
 
-	@Override
-	public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
-		configurer.addCustomResolver(authenticationPrincipalArgumentResolver());
+	@Autowired(required = false)
+	void setAdapterRegistry(ReactiveAdapterRegistry adapterRegistry) {
+		this.adapterRegistry = adapterRegistry;
+	}
+
+	@Autowired(required = false)
+	void setAuthenticationManager(ReactiveAuthenticationManager authenticationManager) {
+		this.authenticationManager = authenticationManager;
+	}
+
+	@Autowired(required = false)
+	void setReactiveUserDetailsService(ReactiveUserDetailsService reactiveUserDetailsService) {
+		this.reactiveUserDetailsService = reactiveUserDetailsService;
+	}
+
+	@Autowired(required = false)
+	void setPasswordEncoder(PasswordEncoder passwordEncoder) {
+		this.passwordEncoder = passwordEncoder;
+	}
+
+	@Autowired(required = false)
+	void setUserDetailsPasswordService(ReactiveUserDetailsPasswordService userDetailsPasswordService) {
+		this.userDetailsPasswordService = userDetailsPasswordService;
+	}
+
+	@Bean
+	public WebFluxConfigurer authenticationPrincipalArgumentResolverConfigurer(
+			AuthenticationPrincipalArgumentResolver authenticationPrincipalArgumentResolver) {
+		return new WebFluxConfigurer() {
+			@Override
+			public void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
+				configurer.addCustomResolver(authenticationPrincipalArgumentResolver);
+			}
+		};
 	}
 
 	@Bean
 	public AuthenticationPrincipalArgumentResolver authenticationPrincipalArgumentResolver() {
 		AuthenticationPrincipalArgumentResolver resolver = new AuthenticationPrincipalArgumentResolver(
 			this.adapterRegistry);
+		if (this.beanFactory != null) {
+			resolver.setBeanResolver(new BeanFactoryResolver(this.beanFactory));
+		}
+		return resolver;
+	}
+
+	@Bean
+	public CurrentSecurityContextArgumentResolver reactiveCurrentSecurityContextArgumentResolver() {
+		CurrentSecurityContextArgumentResolver resolver = new CurrentSecurityContextArgumentResolver(
+				this.adapterRegistry);
 		if (this.beanFactory != null) {
 			resolver.setBeanResolver(new BeanFactoryResolver(this.beanFactory));
 		}

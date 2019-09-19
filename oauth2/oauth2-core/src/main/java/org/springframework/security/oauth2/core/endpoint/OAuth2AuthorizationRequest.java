@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,18 @@ import org.springframework.security.core.SpringSecurityCoreVersion;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
-import java.util.stream.Collectors;
 
 /**
  * A representation of an OAuth 2.0 Authorization Request
@@ -55,6 +54,7 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 	private String state;
 	private Map<String, Object> additionalParameters;
 	private String authorizationRequestUri;
+	private Map<String, Object> attributes;
 
 	private OAuth2AuthorizationRequest() {
 	}
@@ -132,6 +132,29 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 	}
 
 	/**
+	 * Returns the attributes associated to the request.
+	 *
+	 * @since 5.2
+	 * @return a {@code Map} of the attributes associated to the request
+	 */
+	public Map<String, Object> getAttributes() {
+		return this.attributes;
+	}
+
+	/**
+	 * Returns the value of an attribute associated to the request, or {@code null} if not available.
+	 *
+	 * @since 5.2
+	 * @param name the name of the attribute
+	 * @param <T> the type of the attribute
+	 * @return the value of the attribute associated to the request
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getAttribute(String name) {
+		return (T) this.getAttributes().get(name);
+	}
+
+	/**
 	 * Returns the {@code URI} string representation of the OAuth 2.0 Authorization Request.
 	 *
 	 * <p>
@@ -180,7 +203,8 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 				.redirectUri(authorizationRequest.getRedirectUri())
 				.scopes(authorizationRequest.getScopes())
 				.state(authorizationRequest.getState())
-				.additionalParameters(authorizationRequest.getAdditionalParameters());
+				.additionalParameters(authorizationRequest.getAdditionalParameters())
+				.attributes(authorizationRequest.getAttributes());
 	}
 
 	/**
@@ -196,6 +220,7 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 		private String state;
 		private Map<String, Object> additionalParameters;
 		private String authorizationRequestUri;
+		private Map<String, Object> attributes;
 
 		private Builder(AuthorizationGrantType authorizationGrantType) {
 			Assert.notNull(authorizationGrantType, "authorizationGrantType cannot be null");
@@ -248,8 +273,7 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 		 */
 		public Builder scope(String... scope) {
 			if (scope != null && scope.length > 0) {
-				return this.scopes(Arrays.stream(scope).collect(
-					Collectors.toCollection(LinkedHashSet::new)));
+				return this.scopes(toLinkedHashSet(scope));
 			}
 			return this;
 		}
@@ -284,6 +308,18 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 		 */
 		public Builder additionalParameters(Map<String, Object> additionalParameters) {
 			this.additionalParameters = additionalParameters;
+			return this;
+		}
+
+		/**
+		 * Sets the attributes associated to the request.
+		 *
+		 * @since 5.2
+		 * @param attributes the attributes associated to the request
+		 * @return the {@link Builder}
+		 */
+		public Builder attributes(Map<String, Object> attributes) {
+			this.attributes = attributes;
 			return this;
 		}
 
@@ -331,39 +367,42 @@ public final class OAuth2AuthorizationRequest implements Serializable {
 			authorizationRequest.authorizationRequestUri =
 					StringUtils.hasText(this.authorizationRequestUri) ?
 						this.authorizationRequestUri : this.buildAuthorizationRequestUri();
+			authorizationRequest.attributes = Collections.unmodifiableMap(
+					CollectionUtils.isEmpty(this.attributes) ?
+							Collections.emptyMap() : new LinkedHashMap<>(this.attributes));
 
 			return authorizationRequest;
 		}
 
 		private String buildAuthorizationRequestUri() {
-			Map<String, String> parameters = new LinkedHashMap<>();
-			parameters.put(OAuth2ParameterNames.RESPONSE_TYPE, this.responseType.getValue());
-			parameters.put(OAuth2ParameterNames.CLIENT_ID, this.clientId);
+			MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
+			parameters.set(OAuth2ParameterNames.RESPONSE_TYPE, this.responseType.getValue());
+			parameters.set(OAuth2ParameterNames.CLIENT_ID, this.clientId);
 			if (!CollectionUtils.isEmpty(this.scopes)) {
-				parameters.put(OAuth2ParameterNames.SCOPE,
+				parameters.set(OAuth2ParameterNames.SCOPE,
 						StringUtils.collectionToDelimitedString(this.scopes, " "));
 			}
 			if (this.state != null) {
-				parameters.put(OAuth2ParameterNames.STATE, this.state);
+				parameters.set(OAuth2ParameterNames.STATE, this.state);
 			}
 			if (this.redirectUri != null) {
-				parameters.put(OAuth2ParameterNames.REDIRECT_URI, this.redirectUri);
+				parameters.set(OAuth2ParameterNames.REDIRECT_URI, this.redirectUri);
 			}
 			if (!CollectionUtils.isEmpty(this.additionalParameters)) {
-				this.additionalParameters.entrySet().stream()
-						.filter(e -> !e.getKey().equals(OAuth2ParameterNames.REGISTRATION_ID))
-						.forEach(e -> parameters.put(e.getKey(), e.getValue().toString()));
+				this.additionalParameters.forEach((k, v) -> parameters.set(k, v.toString()));
 			}
 
-			try {
-				StringJoiner queryParams = new StringJoiner("&");
-				for (String paramName : parameters.keySet()) {
-					queryParams.add(paramName + "=" + URLEncoder.encode(parameters.get(paramName), "UTF-8"));
-				}
-				return this.authorizationUri + "?" + queryParams.toString();
-			} catch (UnsupportedEncodingException ex) {
-				throw new IllegalArgumentException("Unable to build authorization request uri: " + ex.getMessage(), ex);
-			}
+			return UriComponentsBuilder.fromHttpUrl(this.authorizationUri)
+					.queryParams(parameters)
+					.encode(StandardCharsets.UTF_8)
+					.build()
+					.toUriString();
+		}
+
+		private LinkedHashSet<String> toLinkedHashSet(String... scope) {
+			LinkedHashSet<String> result = new LinkedHashSet<>();
+			Collections.addAll(result, scope);
+			return result;
 		}
 	}
 }

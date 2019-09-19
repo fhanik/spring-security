@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,21 @@
  */
 package org.springframework.security.oauth2.client.endpoint;
 
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.util.Set;
@@ -64,7 +69,20 @@ public class WebClientReactiveClientCredentialsTokenResponseClient implements Re
 					.headers(headers(clientRegistration))
 					.body(body)
 					.exchange()
-					.flatMap(response -> response.body(oauth2AccessTokenResponse()))
+					.flatMap(response -> {
+						HttpStatus status = HttpStatus.resolve(response.rawStatusCode());
+						if (status == null || !status.is2xxSuccessful()) {
+							// extract the contents of this into a method named oauth2AccessTokenResponse but has an argument for the response
+							return response.bodyToFlux(DataBuffer.class)
+								.map(DataBufferUtils::release)
+								.then(Mono.error(WebClientResponseException.create(response.rawStatusCode(),
+											"Cannot get token, expected 2xx HTTP Status code",
+											null,
+											null,
+											null
+								)));
+						}
+						return response.body(oauth2AccessTokenResponse()); })
 					.map(response -> {
 						if (response.getAccessToken().getScopes().isEmpty()) {
 							response = OAuth2AccessTokenResponse.withResponse(response)
@@ -79,7 +97,6 @@ public class WebClientReactiveClientCredentialsTokenResponseClient implements Re
 	private Consumer<HttpHeaders> headers(ClientRegistration clientRegistration) {
 		return headers -> {
 			headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-			headers.setBasicAuth(clientRegistration.getClientId(), clientRegistration.getClientSecret());
 			if (ClientAuthenticationMethod.BASIC.equals(clientRegistration.getClientAuthenticationMethod())) {
 				headers.setBasicAuth(clientRegistration.getClientId(), clientRegistration.getClientSecret());
 			}
@@ -100,5 +117,10 @@ public class WebClientReactiveClientCredentialsTokenResponseClient implements Re
 			body.with(OAuth2ParameterNames.CLIENT_SECRET, clientRegistration.getClientSecret());
 		}
 		return body;
+	}
+
+	public void setWebClient(WebClient webClient) {
+		Assert.notNull(webClient, "webClient cannot be null");
+		this.webClient = webClient;
 	}
 }

@@ -26,7 +26,7 @@ import org.springframework.util.Assert;
 
 /**
  * Caches tickets using a Spring IoC defined <a
- * href="http://ehcache.sourceforge.net">EHCACHE</a>.
+ * href="https://www.ehcache.org/">EHCACHE</a>.
  *
  * @author Ben Alex
  */
@@ -44,7 +44,7 @@ public class EhCacheBasedTicketCache implements StatelessTicketCache, Initializi
 	// ~ Methods
 	// ========================================================================================================
 
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		Assert.notNull(cache, "cache mandatory");
 	}
 

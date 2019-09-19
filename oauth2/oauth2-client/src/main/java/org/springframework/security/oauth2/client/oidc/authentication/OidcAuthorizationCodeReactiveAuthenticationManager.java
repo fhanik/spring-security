@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,16 +37,14 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoderFactory;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 /**
  * An implementation of an {@link org.springframework.security.authentication.AuthenticationProvider} for OAuth 2.0 Login,
@@ -68,6 +66,7 @@ import java.util.function.Function;
  * @see ReactiveOAuth2AccessTokenResponseClient
  * @see ReactiveOAuth2UserService
  * @see OAuth2User
+ * @see ReactiveOidcIdTokenDecoderFactory
  * @see <a target="_blank" href="https://tools.ietf.org/html/rfc6749#section-4.1">Section 4.1 Authorization Code Grant Flow</a>
  * @see <a target="_blank" href="https://tools.ietf.org/html/rfc6749#section-4.1.3">Section 4.1.3 Access Token Request</a>
  * @see <a target="_blank" href="https://tools.ietf.org/html/rfc6749#section-4.1.4">Section 4.1.4 Access Token Response</a>
@@ -78,7 +77,6 @@ public class OidcAuthorizationCodeReactiveAuthenticationManager implements
 	private static final String INVALID_STATE_PARAMETER_ERROR_CODE = "invalid_state_parameter";
 	private static final String INVALID_REDIRECT_URI_PARAMETER_ERROR_CODE = "invalid_redirect_uri_parameter";
 	private static final String INVALID_ID_TOKEN_ERROR_CODE = "invalid_id_token";
-	private static final String MISSING_SIGNATURE_VERIFIER_ERROR_CODE = "missing_signature_verifier";
 
 	private final ReactiveOAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient;
 
@@ -86,7 +84,7 @@ public class OidcAuthorizationCodeReactiveAuthenticationManager implements
 
 	private GrantedAuthoritiesMapper authoritiesMapper = (authorities -> authorities);
 
-	private Function<ClientRegistration, ReactiveJwtDecoder> decoderFactory = new DefaultDecoderFactory();
+	private ReactiveJwtDecoderFactory<ClientRegistration> jwtDecoderFactory = new ReactiveOidcIdTokenDecoderFactory();
 
 	public OidcAuthorizationCodeReactiveAuthenticationManager(
 			ReactiveOAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient,
@@ -102,7 +100,7 @@ public class OidcAuthorizationCodeReactiveAuthenticationManager implements
 		return Mono.defer(() -> {
 			OAuth2AuthorizationCodeAuthenticationToken authorizationCodeAuthentication = (OAuth2AuthorizationCodeAuthenticationToken) authentication;
 
-			// Section 3.1.2.1 Authentication Request - http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+			// Section 3.1.2.1 Authentication Request - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 			// scope REQUIRED. OpenID Connect requests MUST contain the "openid" scope value.
 			if (!authorizationCodeAuthentication.getAuthorizationExchange()
 					.getAuthorizationRequest().getScopes().contains("openid")) {
@@ -138,18 +136,24 @@ public class OidcAuthorizationCodeReactiveAuthenticationManager implements
 
 			return this.accessTokenResponseClient.getTokenResponse(authzRequest)
 					.flatMap(accessTokenResponse -> authenticationResult(authorizationCodeAuthentication, accessTokenResponse))
-					.onErrorMap(OAuth2AuthorizationException.class, e -> new OAuth2AuthenticationException(e.getError(), e.getError().toString()));
+					.onErrorMap(OAuth2AuthorizationException.class, e -> new OAuth2AuthenticationException(e.getError(), e.getError().toString()))
+					.onErrorMap(JwtException.class, e -> {
+						OAuth2Error invalidIdTokenError = new OAuth2Error(INVALID_ID_TOKEN_ERROR_CODE, e.getMessage(), null);
+						throw new OAuth2AuthenticationException(invalidIdTokenError, invalidIdTokenError.toString(), e);
+					});
 		});
 	}
 
 	/**
-	 * Provides a way to customize the {@link ReactiveJwtDecoder} given a {@link ClientRegistration}
-	 * @param decoderFactory the {@link Function} used to create {@link ReactiveJwtDecoder} instance. Cannot be null.
+	 * Sets the {@link ReactiveJwtDecoderFactory} used for {@link OidcIdToken} signature verification.
+	 * The factory returns a {@link ReactiveJwtDecoder} associated to the provided {@link ClientRegistration}.
+	 *
+	 * @since 5.2
+	 * @param jwtDecoderFactory the {@link ReactiveJwtDecoderFactory} used for {@link OidcIdToken} signature verification
 	 */
-	void setDecoderFactory(
-			Function<ClientRegistration, ReactiveJwtDecoder> decoderFactory) {
-		Assert.notNull(decoderFactory, "decoderFactory cannot be null");
-		this.decoderFactory = decoderFactory;
+	public final void setJwtDecoderFactory(ReactiveJwtDecoderFactory<ClientRegistration> jwtDecoderFactory) {
+		Assert.notNull(jwtDecoderFactory, "jwtDecoderFactory cannot be null");
+		this.jwtDecoderFactory = jwtDecoderFactory;
 	}
 
 	private Mono<OAuth2LoginAuthenticationToken> authenticationResult(OAuth2AuthorizationCodeAuthenticationToken authorizationCodeAuthentication, OAuth2AccessTokenResponse accessTokenResponse) {
@@ -183,33 +187,9 @@ public class OidcAuthorizationCodeReactiveAuthenticationManager implements
 	}
 
 	private Mono<OidcIdToken> createOidcToken(ClientRegistration clientRegistration, OAuth2AccessTokenResponse accessTokenResponse) {
-		ReactiveJwtDecoder jwtDecoder = this.decoderFactory.apply(clientRegistration);
+		ReactiveJwtDecoder jwtDecoder = this.jwtDecoderFactory.createDecoder(clientRegistration);
 		String rawIdToken = (String) accessTokenResponse.getAdditionalParameters().get(OidcParameterNames.ID_TOKEN);
 		return jwtDecoder.decode(rawIdToken)
-				.map(jwt -> new OidcIdToken(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims()))
-				.doOnNext(idToken -> OidcTokenValidator.validateIdToken(idToken, clientRegistration));
-	}
-
-	private static class DefaultDecoderFactory implements Function<ClientRegistration, ReactiveJwtDecoder> {
-		private final Map<String, ReactiveJwtDecoder> jwtDecoders = new ConcurrentHashMap<>();
-
-		@Override
-		public ReactiveJwtDecoder apply(ClientRegistration clientRegistration) {
-			ReactiveJwtDecoder jwtDecoder = this.jwtDecoders.get(clientRegistration.getRegistrationId());
-			if (jwtDecoder == null) {
-				if (!StringUtils.hasText(clientRegistration.getProviderDetails().getJwkSetUri())) {
-					OAuth2Error oauth2Error = new OAuth2Error(
-							MISSING_SIGNATURE_VERIFIER_ERROR_CODE,
-							"Failed to find a Signature Verifier for Client Registration: '" +
-									clientRegistration.getRegistrationId() + "'. Check to ensure you have configured the JwkSet URI.",
-							null
-					);
-					throw new OAuth2AuthenticationException(oauth2Error, oauth2Error.toString());
-				}
-				jwtDecoder = new NimbusReactiveJwtDecoder(clientRegistration.getProviderDetails().getJwkSetUri());
-				this.jwtDecoders.put(clientRegistration.getRegistrationId(), jwtDecoder);
-			}
-			return jwtDecoder;
-		}
+				.map(jwt -> new OidcIdToken(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims()));
 	}
 }

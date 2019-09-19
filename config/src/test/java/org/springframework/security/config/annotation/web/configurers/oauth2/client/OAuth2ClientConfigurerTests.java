@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,8 +63,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -135,7 +135,23 @@ public class OAuth2ClientConfigurerTests {
 		MvcResult mvcResult = this.mockMvc.perform(get("/oauth2/authorization/registration-1"))
 			.andExpect(status().is3xxRedirection())
 			.andReturn();
-		assertThat(mvcResult.getResponse().getRedirectedUrl()).matches("https://provider.com/oauth2/authorize\\?response_type=code&client_id=client-1&scope=user&state=.{15,}&redirect_uri=http%3A%2F%2Flocalhost%2Fclient-1");
+		assertThat(mvcResult.getResponse().getRedirectedUrl()).matches("https://provider.com/oauth2/authorize\\?" +
+				"response_type=code&client_id=client-1&" +
+				"scope=user&state=.{15,}&" +
+				"redirect_uri=http://localhost/client-1");
+	}
+
+	@Test
+	public void configureWhenOauth2ClientInLambdaThenRedirectForAuthorization() throws Exception {
+		this.spring.register(OAuth2ClientInLambdaConfig.class).autowire();
+
+		MvcResult mvcResult = this.mockMvc.perform(get("/oauth2/authorization/registration-1"))
+			.andExpect(status().is3xxRedirection())
+			.andReturn();
+		assertThat(mvcResult.getResponse().getRedirectedUrl()).matches("https://provider.com/oauth2/authorize\\?" +
+				"response_type=code&client_id=client-1&" +
+				"scope=user&state=.{15,}&" +
+				"redirect_uri=http://localhost/client-1");
 	}
 
 	@Test
@@ -143,14 +159,14 @@ public class OAuth2ClientConfigurerTests {
 		this.spring.register(OAuth2ClientConfig.class).autowire();
 
 		// Setup the Authorization Request in the session
-		Map<String, Object> additionalParameters = new HashMap<>();
-		additionalParameters.put(OAuth2ParameterNames.REGISTRATION_ID, this.registration1.getRegistrationId());
+		Map<String, Object> attributes = new HashMap<>();
+		attributes.put(OAuth2ParameterNames.REGISTRATION_ID, this.registration1.getRegistrationId());
 		OAuth2AuthorizationRequest authorizationRequest = OAuth2AuthorizationRequest.authorizationCode()
 				.authorizationUri(this.registration1.getProviderDetails().getAuthorizationUri())
 				.clientId(this.registration1.getClientId())
 				.redirectUri("http://localhost/client-1")
 				.state("state")
-				.additionalParameters(additionalParameters)
+				.attributes(attributes)
 				.build();
 
 		AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository =
@@ -184,7 +200,10 @@ public class OAuth2ClientConfigurerTests {
 		MvcResult mvcResult = this.mockMvc.perform(get("/resource1").with(user("user1")))
 				.andExpect(status().is3xxRedirection())
 				.andReturn();
-		assertThat(mvcResult.getResponse().getRedirectedUrl()).matches("https://provider.com/oauth2/authorize\\?response_type=code&client_id=client-1&scope=user&state=.{15,}&redirect_uri=http%3A%2F%2Flocalhost%2Fclient-1");
+		assertThat(mvcResult.getResponse().getRedirectedUrl()).matches("https://provider.com/oauth2/authorize\\?" +
+				"response_type=code&client_id=client-1&" +
+				"scope=user&state=.{15,}&" +
+				"redirect_uri=http://localhost/client-1");
 
 		verify(requestCache).saveRequest(any(HttpServletRequest.class), any(HttpServletResponse.class));
 	}
@@ -240,6 +259,32 @@ public class OAuth2ClientConfigurerTests {
 			public String resource1(@RegisteredOAuth2AuthorizedClient("registration-1") OAuth2AuthorizedClient authorizedClient) {
 				return "resource1";
 			}
+		}
+	}
+
+	@EnableWebSecurity
+	@EnableWebMvc
+	static class OAuth2ClientInLambdaConfig extends WebSecurityConfigurerAdapter {
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			// @formatter:off
+			http
+				.authorizeRequests(authorizeRequests ->
+					authorizeRequests
+						.anyRequest().authenticated()
+				)
+				.oauth2Client(withDefaults());
+			// @formatter:on
+		}
+
+		@Bean
+		public ClientRegistrationRepository clientRegistrationRepository() {
+			return clientRegistrationRepository;
+		}
+
+		@Bean
+		public OAuth2AuthorizedClientRepository authorizedClientRepository() {
+			return authorizedClientRepository;
 		}
 	}
 }

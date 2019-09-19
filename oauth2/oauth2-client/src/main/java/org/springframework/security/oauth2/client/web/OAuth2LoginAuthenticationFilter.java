@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +39,8 @@ import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 /**
  * An implementation of an {@link AbstractAuthenticationProcessingFilter} for OAuth 2.0 Login.
@@ -150,7 +148,7 @@ public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProce
 
 	@Override
 	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
-			throws AuthenticationException, IOException, ServletException {
+			throws AuthenticationException {
 
 		MultiValueMap<String, String> params = OAuth2AuthorizationResponseUtils.toMultiMap(request.getParameterMap());
 		if (!OAuth2AuthorizationResponseUtils.isAuthorizationResponse(params)) {
@@ -165,7 +163,7 @@ public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProce
 			throw new OAuth2AuthenticationException(oauth2Error, oauth2Error.toString());
 		}
 
-		String registrationId = (String) authorizationRequest.getAdditionalParameters().get(OAuth2ParameterNames.REGISTRATION_ID);
+		String registrationId = authorizationRequest.getAttribute(OAuth2ParameterNames.REGISTRATION_ID);
 		ClientRegistration clientRegistration = this.clientRegistrationRepository.findByRegistrationId(registrationId);
 		if (clientRegistration == null) {
 			OAuth2Error oauth2Error = new OAuth2Error(CLIENT_REGISTRATION_NOT_FOUND_ERROR_CODE,
@@ -178,9 +176,10 @@ public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProce
 				.toUriString();
 		OAuth2AuthorizationResponse authorizationResponse = OAuth2AuthorizationResponseUtils.convert(params, redirectUri);
 
+		Object authenticationDetails = this.authenticationDetailsSource.buildDetails(request);
 		OAuth2LoginAuthenticationToken authenticationRequest = new OAuth2LoginAuthenticationToken(
 				clientRegistration, new OAuth2AuthorizationExchange(authorizationRequest, authorizationResponse));
-		authenticationRequest.setDetails(this.authenticationDetailsSource.buildDetails(request));
+		authenticationRequest.setDetails(authenticationDetails);
 
 		OAuth2LoginAuthenticationToken authenticationResult =
 			(OAuth2LoginAuthenticationToken) this.getAuthenticationManager().authenticate(authenticationRequest);
@@ -189,6 +188,7 @@ public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProce
 			authenticationResult.getPrincipal(),
 			authenticationResult.getAuthorities(),
 			authenticationResult.getClientRegistration().getRegistrationId());
+		oauth2Authentication.setDetails(authenticationDetails);
 
 		OAuth2AuthorizedClient authorizedClient = new OAuth2AuthorizedClient(
 			authenticationResult.getClientRegistration(),
