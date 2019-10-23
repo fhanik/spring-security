@@ -1,0 +1,254 @@
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+      tag: latest
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: jtarchie/pr
+resources:
+  - name: git-repo
+    type: git
+    source:
+      uri: ((github-repo))
+      branch: ((branch))
+  - name: slack-alert
+    icon: slack
+    type: slack-notification
+    source:
+      url: ((slack-webhook-url))
+  - name: git-pull-request
+    type: pull-request
+    icon: source-pull
+    source:
+      access_token: ((github-ci-pull-request-token))
+      repo: ((github-repo-name))
+      base: ((branch))
+      ignore_paths: ["ci/*"]
+
+jobs:
+  - name: build-check
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: &gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: --version
+          build-arg1: ((build-arg-empty))
+          build-arg2: ((build-arg-empty))
+          build-arg3: ((build-arg-empty))
+          build-arg4: ((build-arg-empty))
+          build-arg5: ((build-arg-empty))
+          build-arg6: ((build-arg-empty))
+          build-arg7: ((build-arg-empty))
+          build-arg8: ((build-arg-empty))
+        timeout: ((task-timeout))
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          build-cmd: ((build-java-check-cmd))
+        timeout: ((task-timeout))
+        on_failure: &on_failure_tag
+          do:
+            - put: slack-alert
+              params:
+                text: ":concourse-failed: <https://ci.spring.io/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}|${BUILD_PIPELINE_NAME} ${BUILD_JOB_NAME} failed!>"
+                silent: true
+                icon_emoji: ":concourse:"
+                username: concourse-ci
+  - name: build-jdk8
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+        timeout: ((task-timeout))
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: ((build-java-8-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: build-snapshot
+    plan:
+    - get: git-repo
+      trigger: true
+    - task: jdk-version
+      file: git-repo/ci/tasks/gradle-command.yml
+      vars:
+        <<: *gradle_vars
+      timeout: ((task-timeout))
+    - task: build-jdk-8
+      file: git-repo/ci/tasks/gradle-command.yml
+      vars:
+        <<: *gradle_vars
+        openjdk-tag: ((openjdk-8-tag))
+        build-cmd: ((build-java-11-cmd))
+        build-arg1: "-PforceMavenRepositories=snapshot"
+        build-arg2: "-PspringVersion=5.+"
+        build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT"
+        build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT"
+      timeout: ((task-timeout))
+      on_failure: *on_failure_tag
+  - name: build-jdk9
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-9-tag))
+        timeout: ((task-timeout))
+      - task: build-jdk-9
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-9-tag))
+          build-cmd: ((build-java-8-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: build-jdk10
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-10-tag))
+        timeout: ((task-timeout))
+      - task: build-jdk-10
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-10-tag))
+          build-cmd: ((build-java-11-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: build-jdk11
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-11-tag))
+        timeout: ((task-timeout))
+      - task: build-jdk-11
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-11-tag))
+          build-cmd: ((build-java-11-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: build-jdk12
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-12-tag))
+        timeout: ((task-timeout))
+      - task: build-jdk-12
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-12-tag))
+          build-cmd: ((build-java-11-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: deploy-artifacts
+    plan:
+      - get: git-repo
+        trigger: true
+        passed: [build-check, build-jdk8, build-jdk9, build-jdk10, build-jdk11, build-jdk12, build-snapshot]
+      - task: create-gpg-ring
+        file: git-repo/ci/tasks/gpg-create-signing-keyring.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          private-key: ((spring-gpg.private_key)),
+          public-key: ((spring-gpg.public_key)),
+          pass-phrase: ((spring-gpg-passphrase)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+      - task: deploy-artifacts
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: "deployArtifacts"
+          build-arg1: "finalizeDeployArtifacts"
+          build-arg2: -Psigning.secretKeyRingFile=trustedkeys.gpg
+          build-arg3: -Psigning.keyId=((spring-gpg-key-id))
+          build-arg4: -Psigning.password=((spring-gpg-passphrase))
+          build-arg5: -PossrhUsername=((sonatype-username))
+          build-arg6: -PossrhPassword=((sonatype-password))
+          build-arg7: -PartifactoryUsername=((artifactory-username))
+          build-arg8: -PartifactoryPassword=((artifactory-password))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: deploy-docs
+    plan:
+      - get: git-repo
+        trigger: true
+        passed: [deploy-artifacts]
+      - task: deploy-artifacts
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: "clean"
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: deploy-schemas
+    plan:
+      - get: git-repo
+        trigger: true
+        passed: [deploy-docs]
+      - task: deploy-schemas
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: "clean"
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+  - name: build-pull-requests
+    serial: true
+    public: true
+    plan:
+      - get: git-repo
+        resource: git-pull-request
+        trigger: true
+        version: every
+      - task: build-jdk-8-pr
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: ((build-java-8-cmd))
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+groups:
+  - name: "Build"
+    jobs: [
+      "build-check", "build-jdk8", "build-jdk9", "build-jdk10", "build-jdk11", "build-jdk12", "build-snapshot",
+      "deploy-artifacts", "deploy-docs", "deploy-schemas"
+    ]
+  - name: "Build Pull Requests"
+    jobs: ["build-pull-requests"]
+

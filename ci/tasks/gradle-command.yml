@@ -1,0 +1,32 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: openjdk
+    tag: ((openjdk-tag))
+inputs:
+  - name: git-repo
+outputs:
+  - name: build-((openjdk-tag))-results
+    path: git-repo
+run:
+  path: ./gradlew
+  args: [
+    "clean",
+    ((build-cmd)),
+    ((build-arg1)),
+    ((build-arg2)),
+    ((build-arg3)),
+    ((build-arg4)),
+    ((build-arg5)),
+    ((build-arg6)),
+    ((build-arg7)),
+    ((build-arg8)),
+    "--no-daemon",
+    "--stacktrace",
+    "--refresh-dependencies",
+  ]
+  #args: [":spring-security-core:assemble", "--no-daemon", "--stacktrace"]
+  dir: git-repo
+

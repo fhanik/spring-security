@@ -1,0 +1,14 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: openjdk
+    tag: ((openjdk-tag))
+inputs:
+  - name: build-((openjdk-tag))-results
+run:
+  path: find
+  args: [".", "-type", "f", "-name", "'*.jar'"]
+  dir: build-((openjdk-tag))-results
+
