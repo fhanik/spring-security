@@ -1,0 +1,29 @@
+== Concourse pipeline
+
+Ensure that you've setup the spring-security target and can login
+
+Pipeline will be visible at
+
+https://ci.spring.io/teams/spring-security/pipelines/spring-security
+
+[source]
+----
+$ fly -t spring-security login -n spring-security -c https://ci.spring.io
+----
+
+The pipeline can be deployed using the following command:
+
+[source]
+----
+$ fly -t spring-security set-pipeline -p spring-security -c ci/pipeline.yml -l ci/parameters.yml
+----
+
+You can log into a container for a specific job, in this case the JDK 10 build
+
+[source]
+----
+$ fly -t spring-security intercept -j spring-security/build-jdk10
+----
+
+NOTE: This assumes that you have credhub integration configured with the appropriate
+secrets, once secrets are required.
