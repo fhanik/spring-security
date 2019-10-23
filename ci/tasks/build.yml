@@ -13,7 +13,3 @@ run:
   path: git-repo/gradlew
   args: ["clean", "build"]
 
-caches:
-  - path: gradle
-  - path: maven
-

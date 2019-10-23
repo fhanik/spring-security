@@ -1,7 +1,6 @@
 resources:
   - name: git-repo
     type: git
-    icon: github-circle
     source:
       uri: ((github-repo))
       branch: ((branch))
