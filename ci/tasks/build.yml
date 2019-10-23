@@ -10,6 +10,7 @@ inputs:
 outputs:
   - name: out
 run:
-  path: git-repo/gradlew
+  path: ./gradlew
   args: ["build"]
+  dir: git-repo
 
