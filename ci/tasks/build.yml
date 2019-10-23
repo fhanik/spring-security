@@ -11,6 +11,6 @@ outputs:
   - name: out
 run:
   path: ./gradlew
-  args: ["build", "--no-daemon"]
+  args: ["clean", "build", "--no-daemon"]
   dir: git-repo
 
