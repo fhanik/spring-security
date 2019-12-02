@@ -10,6 +10,14 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
-      - task: build
-        file: git-repo/ci/tasks/build.yml
+      - in_parallel:
+          - task: build
+            file: git-repo/ci/tasks/build.yml
+            params:
+              openjdk-tag: 8-jdk
+          - task: build
+            file: git-repo/ci/tasks/build.yml
+            params:
+              openjdk-tag: openjdk:12
+
 
