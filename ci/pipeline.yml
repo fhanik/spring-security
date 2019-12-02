@@ -11,11 +11,11 @@ jobs:
       - get: git-repo
         trigger: true
       - in_parallel:
-          - task: build
+          - task: build-jdk-8
             file: git-repo/ci/tasks/build.yml
             params:
               openjdk-tag: 8-jdk
-          - task: build
+          - task: build-jdk-12
             file: git-repo/ci/tasks/build.yml
             params:
               openjdk-tag: openjdk:12
