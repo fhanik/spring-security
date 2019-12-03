@@ -8,7 +8,7 @@ image_resource:
 inputs:
   - name: git-repo
 outputs:
-  - name: out
+  - name: out-((openjdk-tag))
 run:
   path: ./gradlew
   args: ["clean", "build", "--no-daemon"]
