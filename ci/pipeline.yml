@@ -13,9 +13,9 @@ jobs:
       - in_parallel:
           - task: build-jdk-8
             file: git-repo/ci/tasks/build.yml
-            params: {openjdk-tag: ((openjdk-8-tag))}
+            vars: {openjdk-tag: ((openjdk-8-tag))}
           - task: build-jdk-12
             file: git-repo/ci/tasks/build.yml
-            params: {openjdk-tag: ((openjdk-12-tag))}
+            vars: {openjdk-tag: ((openjdk-12-tag))}
 
 
