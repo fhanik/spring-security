@@ -11,7 +11,7 @@ pipeline-name: "spring-security"
 concourse-url: "https://ci.spring.io"
 bintray-subject: "spring"
 bintray-repo: "jars"
-task-timeout: 2h00m
+task-timeout: 1h00m
 openjdk-8-tag: 8-jdk
 openjdk-9-tag: 9-jdk
 openjdk-11-tag: 11-jdk

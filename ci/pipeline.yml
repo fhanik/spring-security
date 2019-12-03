@@ -4,6 +4,14 @@ resources:
     source:
       uri: ((github-repo))
       branch: ((branch))
+      ignore_paths: ["ci/*"]
+  - name: git-pull-request
+    type: pull-request
+    icon: source-pull
+    source:
+      repo: ((github-repo-name))
+      base: ((branch))
+      ignore_paths: ["ci/*"]
 
 jobs:
   - name: build-jdk8
@@ -13,6 +21,7 @@ jobs:
       - task: build-jdk-8
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-8-tag))}
+        timeout: ((task-timeout))
   - name: build-jdk9
     plan:
       - get: git-repo
@@ -20,6 +29,7 @@ jobs:
       - task: build-jdk-9
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-9-tag))}
+        timeout: ((task-timeout))
   - name: build-jdk11
     plan:
       - get: git-repo
@@ -27,6 +37,7 @@ jobs:
       - task: build-jdk-11
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-11-tag))}
+        timeout: ((task-timeout))
   - name: build-jdk12
     plan:
       - get: git-repo
@@ -34,8 +45,26 @@ jobs:
       - task: build-jdk-12
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-12-tag))}
+        timeout: ((task-timeout))
+  - name: build-pull-requests
+    serial: true
+    public: true
+    plan:
+      - get: git-repo
+        resource: git-pull-request
+        trigger: true
+        version: every
+      - put: git-pull-request
+        params:
+          path: git-repo
+      - task: build-jdk-8-pr
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-8-tag))}
+        timeout: ((task-timeout))
 
 groups:
   - name: "Build"
     jobs: ["build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12"]
+  - name: "Build Pull Requests"
+    jobs: ["build-pull-requests"]
 
