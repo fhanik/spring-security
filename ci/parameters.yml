@@ -13,5 +13,5 @@ bintray-subject: "spring"
 bintray-repo: "jars"
 task-timeout: 2h00m
 openjdk-8-tag: 8-jdk
-openjdk-12-tag: openjdk:12
+openjdk-12-tag: 12-jdk
 
