@@ -4,7 +4,6 @@ resources:
     source:
       uri: ((github-repo))
       branch: ((branch))
-      ignore_paths: ["ci/*"]
   - name: git-pull-request
     type: pull-request
     icon: source-pull
@@ -54,9 +53,6 @@ jobs:
         resource: git-pull-request
         trigger: true
         version: every
-      - put: git-pull-request
-        params:
-          path: git-repo
       - task: build-jdk-8-pr
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-8-tag))}
