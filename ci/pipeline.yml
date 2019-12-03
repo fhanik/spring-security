@@ -6,16 +6,36 @@ resources:
       branch: ((branch))
 
 jobs:
-  - name: run-build
+  - name: build-jdk8
     plan:
       - get: git-repo
         trigger: true
-      - in_parallel:
-          - task: build-jdk-8
-            file: git-repo/ci/tasks/build.yml
-            vars: {openjdk-tag: ((openjdk-8-tag))}
-          - task: build-jdk-12
-            file: git-repo/ci/tasks/build.yml
-            vars: {openjdk-tag: ((openjdk-12-tag))}
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-8-tag))}
+  - name: build-jdk9
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: build-jdk-9
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-9-tag))}
+  - name: build-jdk11
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: build-jdk-11
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-11-tag))}
+  - name: build-jdk12
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: build-jdk-12
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-12-tag))}
 
+groups:
+  - name: "Build"
+    jobs: ["build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12"]
 
