@@ -19,7 +19,7 @@ jobs:
         trigger: true
       - task: build-jdk-8
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-8-tag)), build-cmd: ((build-java8-cmd))}
+        vars: {openjdk-tag: ((openjdk-8-tag)), build-cmd: ((build-java-8-cmd))}
         timeout: ((task-timeout))
   - name: build-jdk9
     plan:
@@ -27,7 +27,7 @@ jobs:
         trigger: true
       - task: build-jdk-9
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-9-tag, build-cmd: ((build-java8-cmd))}
+        vars: {openjdk-tag: ((openjdk-9-tag)), build-cmd: ((build-java-8-cmd))}
         timeout: ((task-timeout))
   - name: build-jdk11
     plan:
@@ -35,7 +35,7 @@ jobs:
         trigger: true
       - task: build-jdk-11
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-11-tag)), build-cmd: ((build-java11-cmd))}
+        vars: {openjdk-tag: ((openjdk-11-tag)), build-cmd: ((build-java-11-cmd))}
         timeout: ((task-timeout))
   - name: build-jdk12
     plan:
@@ -43,7 +43,7 @@ jobs:
         trigger: true
       - task: build-jdk-12
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-12-tag)), build-cmd: ((build-java11-cmd))}
+        vars: {openjdk-tag: ((openjdk-12-tag)), build-cmd: ((build-java-11-cmd))}
         timeout: ((task-timeout))
   - name: build-pull-requests
     serial: true
