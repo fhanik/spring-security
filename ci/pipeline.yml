@@ -13,6 +13,14 @@ resources:
       ignore_paths: ["ci/*"]
 
 jobs:
+  - name: build-check
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/build.yml
+        vars: {openjdk-tag: ((openjdk-8-tag)), build-cmd: check}
+        timeout: ((task-timeout))
   - name: build-jdk8
     plan:
       - get: git-repo
@@ -60,7 +68,7 @@ jobs:
 
 groups:
   - name: "Build"
-    jobs: ["build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12"]
+    jobs: ["build-check", "build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12"]
   - name: "Build Pull Requests"
     jobs: ["build-pull-requests"]
 
