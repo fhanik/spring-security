@@ -11,6 +11,6 @@ outputs:
   - name: out-((openjdk-tag))
 run:
   path: ./gradlew
-  args: ["clean", "build", "--no-daemon"]
+  args: ["clean", ((build-cmd)), "--no-daemon"]
   dir: git-repo
 
