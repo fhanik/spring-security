@@ -5,8 +5,6 @@ image_resource:
   source:
     repository: openjdk
     tag: ((openjdk-tag))
-inputs:
-  - name: build-jdk8
 run:
   path: find . -type f
   args: []

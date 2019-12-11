@@ -25,7 +25,6 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
-      - put: git-repo
       - task: build-jdk-8
         file: git-repo/ci/tasks/build.yml
         vars: {openjdk-tag: ((openjdk-8-tag)), build-cmd: ((build-java-8-cmd))}
@@ -61,6 +60,7 @@ jobs:
         passed: [build-check, build-jdk8, build-jdk9, build-jdk11, build-jdk12]
       - task: build-passed
         file: git-repo/ci/tasks/build-passed.yml
+        vars: {openjdk-tag: ((openjdk-8-tag))}
         timeout: ((task-timeout))
   - name: build-pull-requests
     serial: true
