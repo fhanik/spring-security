@@ -12,6 +12,6 @@ outputs:
 run:
   path: ./gradlew
   #args: ["clean", ((build-cmd)), "--no-daemon", "--stacktrace", "--refresh-dependencies"]
-  args: ["clean", "--no-daemon", "--stacktrace"]
+  args: ["assemble", "--no-daemon", "--stacktrace"]
   dir: git-repo
 
