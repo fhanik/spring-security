@@ -7,6 +7,6 @@ image_resource:
     tag: ((openjdk-tag))
 run:
   path: find
-  args: [".", "-type", "-d"]
+  args: [".", "-type", "-f", "-name", "'*.jar'"]
   dir: git-repo
 
