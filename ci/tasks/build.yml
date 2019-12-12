@@ -11,6 +11,7 @@ outputs:
   - name: out-((openjdk-tag))
 run:
   path: ./gradlew
-  args: ["clean", ((build-cmd)), "--no-daemon", "--stacktrace", "--refresh-dependencies"]
+  #args: ["clean", ((build-cmd)), "--no-daemon", "--stacktrace", "--refresh-dependencies"]
+  args: ["clean", "--no-daemon", "--stacktrace"]
   dir: git-repo
 
