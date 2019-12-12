@@ -5,8 +5,10 @@ image_resource:
   source:
     repository: openjdk
     tag: ((openjdk-tag))
+inputs:
+  - name: build-((openjdk-tag))-results
 run:
   path: find
   args: [".", "-type", "f", "-name", "'*.jar'"]
-  dir: git-repo
+  dir: build-((openjdk-tag))-results
 
