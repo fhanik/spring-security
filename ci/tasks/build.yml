@@ -9,6 +9,7 @@ inputs:
   - name: git-repo
 outputs:
   - name: build-((openjdk-tag))-results
+    path: git-repo
 run:
   path: ./gradlew
   #args: ["clean", ((build-cmd)), "--no-daemon", "--stacktrace", "--refresh-dependencies"]
