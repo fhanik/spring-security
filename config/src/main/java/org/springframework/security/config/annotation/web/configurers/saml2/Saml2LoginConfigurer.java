@@ -36,7 +36,10 @@ import org.springframework.security.web.authentication.ui.DefaultLoginPageGenera
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.util.Assert;
+import sun.misc.Unsafe;
+import sun.nio.ch.PollSelectorProvider;
 
+import java.io.FileInputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.servlet.Filter;
@@ -96,6 +99,10 @@ public final class Saml2LoginConfigurer<B extends HttpSecurityBuilder<B>> extend
 		AbstractAuthenticationFilterConfigurer<B, Saml2LoginConfigurer<B>, Saml2WebSsoAuthenticationFilter> {
 
 	private String loginPage;
+
+	static {
+		System.out.println(PollSelectorProvider.class.toString());
+	}
 
 	private String loginProcessingUrl = Saml2WebSsoAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI;
 
