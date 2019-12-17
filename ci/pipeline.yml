@@ -28,15 +28,14 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-8
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)), build-cmd: check,
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)), build-cmd: check,
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
         on_failure: &on_failure_tag
           do:
             - put: slack-alert
@@ -49,149 +48,140 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-8
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)),
-            build-cmd: ((build-java-8-cmd)),
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-8
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          build-cmd: ((build-java-8-cmd)),
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: build-snapshot
     plan:
     - get: git-repo
       trigger: true
-    - do:
-        - task: build-jdk-8
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)),
-            build-cmd: ((build-java-11-cmd)),
-            build-arg1: "-PforceMavenRepositories=snapshot",
-            build-arg2: "-PspringVersion='5.+'",
-            build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT",
-            build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT",
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-      << : *on_failure_tag
+    - task: build-jdk-8
+      file: git-repo/ci/tasks/gradle-command.yml
+      vars: {
+        openjdk-tag: ((openjdk-8-tag)),
+        build-cmd: ((build-java-11-cmd)),
+        build-arg1: "-PforceMavenRepositories=snapshot",
+        build-arg2: "-PspringVersion='5.+'",
+        build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT",
+        build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT",
+        build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+      }
+      timeout: ((task-timeout))
+      on_failure: *on_failure_tag
   - name: build-jdk9
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-9
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-9-tag)),
-            build-cmd: ((build-java-8-cmd)),
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-9
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-9-tag)),
+          build-cmd: ((build-java-8-cmd)),
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: build-jdk10
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-10
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-10-tag)),
-            build-cmd: ((build-java-11-cmd)),
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-10
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-10-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: build-jdk11
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-11
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-11-tag)),
-            build-cmd: ((build-java-11-cmd)),
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-11
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-11-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: build-jdk12
     plan:
       - get: git-repo
         trigger: true
-      - do:
-        - task: build-jdk-12
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-12-tag)),
-            build-cmd: ((build-java-11-cmd)),
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-12
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-12-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: deploy-artifacts
     plan:
       - get: git-repo
         trigger: true
         passed: [build-check, build-jdk8, build-jdk9, build-jdk10, build-jdk11, build-jdk12, build-snapshot]
-      - do:
-        - task: deploy-artifacts
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)),
-            build-cmd: "deployArtifacts",
-            build-arg1: "finalizeDeployArtifacts",
-            build-arg2: -Psigning.secretKeyRingFile=((signing-keyring-file)),
-            build-arg3: -Psigning.keyId=((signing-key-id)),
-            build-arg4: -Psigning.password=((signing-key-password)),
-            build-arg5: -PossrhUsername=((sonatype-username)),
-            build-arg6: -PossrhPassword=((sonatype-password)),
-            build-arg7: -PartifactoryUsername=((artifactory-username)),
-            build-arg8: -PartifactoryPassword=((artifactory-password)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: deploy-artifacts
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          build-cmd: "deployArtifacts",
+          build-arg1: "finalizeDeployArtifacts",
+          build-arg2: -Psigning.secretKeyRingFile=((signing-keyring-file)),
+          build-arg3: -Psigning.keyId=((signing-key-id)),
+          build-arg4: -Psigning.password=((signing-key-password)),
+          build-arg5: -PossrhUsername=((sonatype-username)),
+          build-arg6: -PossrhPassword=((sonatype-password)),
+          build-arg7: -PartifactoryUsername=((artifactory-username)),
+          build-arg8: -PartifactoryPassword=((artifactory-password)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: deploy-docs
     plan:
       - get: git-repo
         trigger: true
         passed: [deploy-artifacts]
-      - do:
-        - task: deploy-artifacts
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)),
-            build-cmd: "clean",
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: deploy-artifacts
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          build-cmd: "clean",
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: deploy-schemas
     plan:
       - get: git-repo
         trigger: true
         passed: [deploy-docs]
-      - do:
-        - task: deploy-artifacts
-          file: git-repo/ci/tasks/gradle-command.yml
-          vars: {
-            openjdk-tag: ((openjdk-8-tag)),
-            build-cmd: "clean",
-            build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
-            build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
-          }
-          timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: deploy-artifacts
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          build-cmd: "clean",
+          build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
+          build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
   - name: build-pull-requests
     serial: true
     public: true
@@ -200,12 +190,11 @@ jobs:
         resource: git-pull-request
         trigger: true
         version: every
-      - do:
-          - task: build-jdk-8-pr
-            file: git-repo/ci/tasks/gradle-command.yml
-            vars: {openjdk-tag: ((openjdk-8-tag))}
-            timeout: ((task-timeout))
-        << : *on_failure_tag
+      - task: build-jdk-8-pr
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: {openjdk-tag: ((openjdk-8-tag))}
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
 groups:
   - name: "Build"
     jobs: [
