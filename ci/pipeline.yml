@@ -68,7 +68,7 @@ jobs:
         openjdk-tag: ((openjdk-8-tag)),
         build-cmd: ((build-java-11-cmd)),
         build-arg1: "-PforceMavenRepositories=snapshot",
-        build-arg2: "-PspringVersion='5.+'",
+        build-arg2: "-PspringVersion=5.+",
         build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT",
         build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT",
         build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
