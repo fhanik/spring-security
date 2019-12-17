@@ -12,8 +12,8 @@ resources:
       base: ((branch))
       ignore_paths: ["ci/*"]
   - name: slack-alert
-    type: slack-notification
     icon: slack
+    type: slack-notification
     source:
       url: ((slack-webhook-url))
 
