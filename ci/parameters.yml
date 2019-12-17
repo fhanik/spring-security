@@ -19,8 +19,5 @@ openjdk-11-tag: 11-jdk
 openjdk-12-tag: 12-jdk
 build-java-8-cmd: build
 build-java-11-cmd: test
-build-arg1: "-Dplaceholder"
-build-arg2: "-Dplaceholder"
-build-arg3: "-Dplaceholder"
-build-arg4: "-Dplaceholder"
+build-arg-empty: "-Dplaceholder"
 

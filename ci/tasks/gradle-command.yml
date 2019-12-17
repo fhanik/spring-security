@@ -22,6 +22,10 @@ run:
     ((build-arg2)),
     ((build-arg3)),
     ((build-arg4)),
+    ((build-arg5)),
+    ((build-arg6)),
+    ((build-arg7)),
+    ((build-arg8)),
   ]
   #args: [":spring-security-core:assemble", "--no-daemon", "--stacktrace"]
   dir: git-repo
