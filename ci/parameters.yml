@@ -14,12 +14,13 @@ bintray-repo: "jars"
 task-timeout: 1h00m
 openjdk-8-tag: 8-jdk
 openjdk-9-tag: 9-jdk
+openjdk-10-tag: 10-jdk
 openjdk-11-tag: 11-jdk
 openjdk-12-tag: 12-jdk
 build-java-8-cmd: build
 build-java-11-cmd: test
-build-arg1: ""
-build-arg2: ""
-build-arg3: ""
-build-arg4: ""
+build-arg1: "-Dplaceholder"
+build-arg2: "-Dplaceholder"
+build-arg3: "-Dplaceholder"
+build-arg4: "-Dplaceholder"
 

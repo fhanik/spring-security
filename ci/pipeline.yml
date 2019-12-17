@@ -66,6 +66,21 @@ jobs:
           build-arg4: ((build-arg4)),
         }
         timeout: ((task-timeout))
+  - name: build-jdk10
+    plan:
+      - get: git-repo
+        trigger: true
+      - task: build-jdk-10
+        file: git-repo/ci/tasks/build.yml
+        vars: {
+          openjdk-tag: ((openjdk-10-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg1)),
+          build-arg2: ((build-arg2)),
+          build-arg3: ((build-arg3)),
+          build-arg4: ((build-arg4)),
+        }
+        timeout: ((task-timeout))
   - name: build-jdk11
     plan:
       - get: git-repo
@@ -120,7 +135,7 @@ jobs:
 
 groups:
   - name: "Build"
-    jobs: ["build-check", "build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12", "build-passed", "build-snapshot"]
+    jobs: ["build-check", "build-jdk8", "build-jdk9", "build-jdk10", "build-jdk11", "build-jdk12", "build-passed", "build-snapshot"]
   - name: "Build Pull Requests"
     jobs: ["build-pull-requests"]
 
