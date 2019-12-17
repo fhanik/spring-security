@@ -18,4 +18,8 @@ openjdk-11-tag: 11-jdk
 openjdk-12-tag: 12-jdk
 build-java-8-cmd: build
 build-java-11-cmd: test
+build-arg1: ""
+build-arg2: ""
+build-arg3: ""
+build-arg4: ""
 

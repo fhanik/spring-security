@@ -12,7 +12,17 @@ outputs:
     path: git-repo
 run:
   path: ./gradlew
-  #args: ["clean", ((build-cmd)), "--no-daemon", "--stacktrace", "--refresh-dependencies"]
-  args: [":spring-security-core:assemble", "--no-daemon", "--stacktrace"]
+  args: [
+    "clean",
+    ((build-cmd)),
+    "--no-daemon",
+    "--stacktrace",
+    "--refresh-dependencies",
+    ((build-arg1)),
+    ((build-arg2)),
+    ((build-arg3)),
+    ((build-arg4)),
+  ]
+  #args: [":spring-security-core:assemble", "--no-daemon", "--stacktrace"]
   dir: git-repo
 

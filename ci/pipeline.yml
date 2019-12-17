@@ -27,15 +27,44 @@ jobs:
         trigger: true
       - task: build-jdk-8
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-8-tag)), build-cmd: ((build-java-8-cmd))}
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          build-cmd: ((build-java-8-cmd)),
+          build-arg1: ((build-arg1)),
+          build-arg2: ((build-arg2)),
+          build-arg3: ((build-arg3)),
+          build-arg4: ((build-arg4)),
+        }
         timeout: ((task-timeout))
+  - name: build-snapshot
+    plan:
+    - get: git-repo
+      trigger: true
+    - task: build-jdk-8
+      file: git-repo/ci/tasks/build.yml
+      vars: {
+        openjdk-tag: ((openjdk-8-tag)),
+        build-cmd: ((build-java-11-cmd)),
+        build-arg1: "-PforceMavenRepositories=snapshot",
+        build-arg2: "-PspringVersion='5.+'",
+        build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT",
+        build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT",
+      }
+      timeout: ((task-timeout))
   - name: build-jdk9
     plan:
       - get: git-repo
         trigger: true
       - task: build-jdk-9
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-9-tag)), build-cmd: ((build-java-8-cmd))}
+        vars: {
+          openjdk-tag: ((openjdk-9-tag)),
+          build-cmd: ((build-java-8-cmd)),
+          build-arg1: ((build-arg1)),
+          build-arg2: ((build-arg2)),
+          build-arg3: ((build-arg3)),
+          build-arg4: ((build-arg4)),
+        }
         timeout: ((task-timeout))
   - name: build-jdk11
     plan:
@@ -43,7 +72,14 @@ jobs:
         trigger: true
       - task: build-jdk-11
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-11-tag)), build-cmd: ((build-java-11-cmd))}
+        vars: {
+          openjdk-tag: ((openjdk-11-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg1)),
+          build-arg2: ((build-arg2)),
+          build-arg3: ((build-arg3)),
+          build-arg4: ((build-arg4)),
+        }
         timeout: ((task-timeout))
   - name: build-jdk12
     plan:
@@ -51,7 +87,14 @@ jobs:
         trigger: true
       - task: build-jdk-12
         file: git-repo/ci/tasks/build.yml
-        vars: {openjdk-tag: ((openjdk-12-tag)), build-cmd: ((build-java-11-cmd))}
+        vars: {
+          openjdk-tag: ((openjdk-12-tag)),
+          build-cmd: ((build-java-11-cmd)),
+          build-arg1: ((build-arg1)),
+          build-arg2: ((build-arg2)),
+          build-arg3: ((build-arg3)),
+          build-arg4: ((build-arg4)),
+        }
         timeout: ((task-timeout))
   - name: build-passed
     plan:
@@ -77,7 +120,7 @@ jobs:
 
 groups:
   - name: "Build"
-    jobs: ["build-check", "build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12", "build-passed"]
+    jobs: ["build-check", "build-jdk8", "build-jdk9", "build-jdk11", "build-jdk12", "build-passed", "build-snapshot"]
   - name: "Build Pull Requests"
     jobs: ["build-pull-requests"]
 
