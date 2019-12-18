@@ -16,6 +16,7 @@
 
 package org.springframework.security.saml2.provider.service.servlet.filter;
 
+import org.springframework.security.saml2.credentials.Saml2X509Credential;
 import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequest;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory;
@@ -32,12 +33,20 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static java.lang.String.format;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.deflate;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.encode;
 
@@ -86,21 +95,39 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 			this.logger.debug(format("Creating SAML2 SP Authentication Request for IDP[%s]", registrationId));
 		}
 		RelyingPartyRegistration relyingParty = this.relyingPartyRegistrationRepository.findByRegistrationId(registrationId);
-		String redirectUrl = createSamlRequestRedirectUrl(request, relyingParty);
-		response.sendRedirect(redirectUrl);
+		if (REDIRECT == relyingParty.getIdpSsoConfiguration().getBinding()) {
+			String redirectUrl = createSamlRequestRedirectUrl(request, relyingParty);
+			response.sendRedirect(redirectUrl);
+		}
+		else {
+			throw new UnsupportedOperationException(POST + " binding is not supported yet");
+		}
 	}
 
 	private String createSamlRequestRedirectUrl(HttpServletRequest request, RelyingPartyRegistration relyingParty) {
-		Saml2AuthenticationRequest authNRequest = createAuthenticationRequest(relyingParty, request);
+		boolean sign = relyingParty.getIdpSsoConfiguration().isSignAuthNRequest();
+		boolean useXmlSig = relyingParty.getIdpSsoConfiguration().getSignatureType() == XML_SIGNATURE;
+		Saml2AuthenticationRequest authNRequest = createAuthenticationRequest(relyingParty, request, sign && useXmlSig);
 		String xml = this.authenticationRequestFactory.createAuthenticationRequest(authNRequest);
 		String encoded = encode(deflate(xml));
 		String relayState = request.getParameter("RelayState");
-		UriComponentsBuilder uriBuilder = UriComponentsBuilder
-				.fromUriString(authNRequest.getDestination())
-				.queryParam("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
-
+		Map<String, String> queryParams = new LinkedHashMap<>();
+		queryParams.put("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
 		if (StringUtils.hasText(relayState)) {
-			uriBuilder.queryParam("RelayState", UriUtils.encode(relayState, StandardCharsets.ISO_8859_1));
+			queryParams.put("RelayState", UriUtils.encode(relayState, StandardCharsets.ISO_8859_1));
+		}
+
+		if (sign && !useXmlSig) {
+			//SimpleSignature
+			queryParams = this.authenticationRequestFactory.simpleSignSaml2Message(
+					queryParams,
+					relyingParty.getCredentials()
+			);
+		}
+
+		UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(authNRequest.getDestination());
+		for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+			uriBuilder.queryParam(entry.getKey(), entry.getValue());
 		}
 
 		return uriBuilder
@@ -108,13 +135,17 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 				.toUriString();
 	}
 
-	private Saml2AuthenticationRequest createAuthenticationRequest(RelyingPartyRegistration relyingParty, HttpServletRequest request) {
+	private Saml2AuthenticationRequest createAuthenticationRequest(
+			RelyingPartyRegistration relyingParty,
+			HttpServletRequest request,
+			boolean signMessage) {
 		String localSpEntityId = Saml2Utils.getServiceProviderEntityId(relyingParty, request);
+		List<Saml2X509Credential> credentials = signMessage ? relyingParty.getCredentials() : Collections.emptyList();
 		return Saml2AuthenticationRequest
 				.builder()
 				.issuer(localSpEntityId)
 				.destination(relyingParty.getIdpSsoConfiguration().getIdpWebSsoUrl())
-				.credentials(c -> c.addAll(relyingParty.getCredentials()))
+				.credentials(c -> c.addAll(credentials))
 				.assertionConsumerServiceUrl(
 						Saml2Utils.resolveUrlTemplate(
 								relyingParty.getAssertionConsumerServiceUrlTemplate(),

@@ -55,7 +55,6 @@ public final class Saml2AuthenticationRequest {
 				this.credentials.add(c);
 			}
 		}
-		Assert.notEmpty(this.credentials, "at least one SIGNING credential must be present");
 	}
 
 

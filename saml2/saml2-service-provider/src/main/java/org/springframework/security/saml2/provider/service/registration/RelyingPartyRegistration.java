@@ -76,7 +76,7 @@ public class RelyingPartyRegistration {
 	/**
 	 * The type of signatures that a message can be signed with
 	 * Supported signature types are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign} and
-	 * {@code XML Signatures http://www.w3.org/2000/09/xmldsig#}
+	 * {@code XML Signatures}
 	 * This implementation supports both signature types on either {@link Saml2MessageBinding#REDIRECT} or
 	 * the {@link Saml2MessageBinding#POST} bindings
 	 * @since 5.3
