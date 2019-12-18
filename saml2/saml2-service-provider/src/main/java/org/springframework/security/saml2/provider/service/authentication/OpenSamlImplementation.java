@@ -15,6 +15,8 @@
  */
 package org.springframework.security.saml2.provider.service.authentication;
 
+import net.shibboleth.utilities.java.support.codec.Base64Support;
+import org.opensaml.xmlsec.crypto.XMLSigningUtil;
 import org.springframework.security.saml2.Saml2Exception;
 import org.springframework.security.saml2.credentials.Saml2X509Credential;
 
@@ -48,12 +50,14 @@ import org.opensaml.xmlsec.encryption.support.SimpleRetrievalMethodEncryptedKeyR
 import org.opensaml.xmlsec.signature.support.SignatureConstants;
 import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureSupport;
+import org.springframework.web.util.UriUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javax.xml.XMLConstants;
@@ -187,6 +191,39 @@ final class OpenSamlImplementation {
 			Element element = marshallerFactory.getMarshaller(object).marshall(object);
 			return SerializeSupport.nodeToString(element);
 		} catch (MarshallingException e) {
+			throw new Saml2Exception(e);
+		}
+	}
+
+	Map<String, String> simpleSignParameters(
+			List<Saml2X509Credential> signingCredentials,
+			Map<String, String> parameters) {
+		final String algorithmUri = SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256;
+		Map<String, String> result = new LinkedHashMap<>(parameters);
+		result.put("SigAlg", UriUtils.encode(algorithmUri, StandardCharsets.ISO_8859_1));
+		StringBuilder queryString = new StringBuilder();
+		int remaining = result.size();
+		for (Map.Entry<String, String> entry : result.entrySet()) {
+			queryString
+					.append(entry.getKey())
+					.append("=")
+					.append(entry.getValue());
+			if (--remaining > 0) {
+				queryString.append("&");
+			}
+		}
+
+		try {
+			byte[] rawSignature = XMLSigningUtil.signWithURI(
+					getSigningCredential(signingCredentials, ""),
+					algorithmUri,
+					queryString.toString().getBytes(StandardCharsets.UTF_8)
+			);
+			String b64Signature = Base64Support.encode(rawSignature, Base64Support.UNCHUNKED);
+			result.put("Signature", UriUtils.encode(b64Signature, StandardCharsets.ISO_8859_1));
+			return result;
+		}
+		catch (SecurityException e) {
 			throw new Saml2Exception(e);
 		}
 	}

@@ -17,6 +17,10 @@
 package org.springframework.security.saml2.provider.service.authentication;
 
 import org.springframework.security.saml2.Saml2Exception;
+import org.springframework.security.saml2.credentials.Saml2X509Credential;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Component that generates an AuthenticationRequest, <code>samlp:AuthnRequestType</code> as defined by
@@ -38,4 +42,13 @@ public interface Saml2AuthenticationRequestFactory {
 	 * @throws Saml2Exception when a SAML library exception occurs
 	 */
 	String createAuthenticationRequest(Saml2AuthenticationRequest request);
+
+	default Map<String, String> simpleSignSaml2Message(
+			Map<String, String> parameters,
+			List<Saml2X509Credential> credentials
+	) {
+		throw new UnsupportedOperationException(
+				Saml2AuthenticationRequestFactory.class.getName() + ".simpleSignSaml2Message is not implemented."
+		);
+	}
 }
