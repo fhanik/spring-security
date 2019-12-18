@@ -96,7 +96,7 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 		String encoded = encode(deflate(xml));
 		String relayState = request.getParameter("RelayState");
 		UriComponentsBuilder uriBuilder = UriComponentsBuilder
-				.fromUriString(relyingParty.getIdpWebSsoUrl())
+				.fromUriString(authNRequest.getDestination())
 				.queryParam("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
 
 		if (StringUtils.hasText(relayState)) {
@@ -113,7 +113,7 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 		return Saml2AuthenticationRequest
 				.builder()
 				.issuer(localSpEntityId)
-				.destination(relyingParty.getIdpWebSsoUrl())
+				.destination(relyingParty.getIdpSsoConfiguration().getIdpWebSsoUrl())
 				.credentials(c -> c.addAll(relyingParty.getCredentials()))
 				.assertionConsumerServiceUrl(
 						Saml2Utils.resolveUrlTemplate(
