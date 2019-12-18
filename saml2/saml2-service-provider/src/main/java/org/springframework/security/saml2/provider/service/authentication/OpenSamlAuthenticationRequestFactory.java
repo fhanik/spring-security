@@ -17,6 +17,7 @@
 package org.springframework.security.saml2.provider.service.authentication;
 
 import org.opensaml.saml.common.xml.SAMLConstants;
+import org.springframework.security.saml2.credentials.Saml2X509Credential;
 import org.springframework.util.Assert;
 
 import org.joda.time.DateTime;
@@ -25,6 +26,8 @@ import org.opensaml.saml.saml2.core.Issuer;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -56,6 +59,12 @@ public class OpenSamlAuthenticationRequestFactory implements Saml2Authentication
 				request.getCredentials(),
 				request.getIssuer()
 		);
+	}
+
+	@Override
+	public Map<String, String> simpleSignSaml2Message(Map<String, String> parameters,
+			List<Saml2X509Credential> credentials) {
+		return this.saml.simpleSignParameters(credentials, parameters);
 	}
 
 	/**
