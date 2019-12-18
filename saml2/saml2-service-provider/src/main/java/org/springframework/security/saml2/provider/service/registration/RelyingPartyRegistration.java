@@ -52,7 +52,7 @@ import static org.springframework.util.Assert.notNull;
  *		Saml2X509Credential idpVerificationCertificate = getVerificationCertificate();
  *		RelyingPartyRegistration rp = RelyingPartyRegistration.withRegistrationId(registrationId)
  * 				.remoteIdpEntityId(idpEntityId)
- * 				.idpWebSsoUrl(webSsoEndpoint)
+ * 				.idpSsoConfiguration(config -> config.idpWebSsoUrl(url));
  * 				.credentials(c -> c.add(signingCredential))
  * 				.credentials(c -> c.add(idpVerificationCertificate))
  * 				.localEntityIdTemplate(localEntityIdTemplate)
@@ -63,21 +63,46 @@ import static org.springframework.util.Assert.notNull;
  */
 public class RelyingPartyRegistration {
 
+	/**
+	 * The type of bindings that messages are exchanged using
+	 * Only supported bindings are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST}
+	 * and {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect}
+	 * @since 5.3
+	 */
+	public enum Saml2MessageBinding {
+		POST, REDIRECT
+	}
+
+	/**
+	 * The type of signatures that a message can be signed with
+	 * Supported signature types are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign} and
+	 * {@code XML Signatures http://www.w3.org/2000/09/xmldsig#}
+	 * This implementation supports both signature types on either {@link Saml2MessageBinding#REDIRECT} or
+	 * the {@link Saml2MessageBinding#POST} bindings
+	 * @since 5.3
+	 */
+	public enum Saml2SignatureType {
+
+		XML_SIGNATURE,
+		SIMPLE_SIGNATURE
+	}
+
 	private final String registrationId;
 	private final String remoteIdpEntityId;
 	private final String assertionConsumerServiceUrlTemplate;
-	private final String idpWebSsoUrl;
 	private final List<Saml2X509Credential> credentials;
 	private final String localEntityIdTemplate;
+	private final IdpSsoConfiguration idpSsoConfiguration;
 
 	private RelyingPartyRegistration(String idpEntityId, String registrationId, String assertionConsumerServiceUrlTemplate,
-			String idpWebSsoUri, List<Saml2X509Credential> credentials, String localEntityIdTemplate) {
+			IdpSsoConfiguration idpSsoConfiguration, List<Saml2X509Credential> credentials, String localEntityIdTemplate) {
 		hasText(idpEntityId, "idpEntityId cannot be empty");
 		hasText(registrationId, "registrationId cannot be empty");
 		hasText(assertionConsumerServiceUrlTemplate, "assertionConsumerServiceUrlTemplate cannot be empty");
 		hasText(localEntityIdTemplate, "localEntityIdTemplate cannot be empty");
 		notEmpty(credentials, "credentials cannot be empty");
-		notNull(idpWebSsoUri, "idpWebSsoUri cannot be empty");
+		notNull(idpSsoConfiguration, "idpSsoConfiguration cannot be null");
+		hasText(idpSsoConfiguration.idpWebSsoUrl, "idpSsoConfiguration.idpWebSsoUrl cannot be empty");
 		for (Saml2X509Credential c : credentials) {
 			notNull(c, "credentials cannot contain null elements");
 		}
@@ -85,7 +110,7 @@ public class RelyingPartyRegistration {
 		this.remoteIdpEntityId = idpEntityId;
 		this.assertionConsumerServiceUrlTemplate = assertionConsumerServiceUrlTemplate;
 		this.credentials = unmodifiableList(new LinkedList<>(credentials));
-		this.idpWebSsoUrl = idpWebSsoUri;
+		this.idpSsoConfiguration = idpSsoConfiguration;
 		this.localEntityIdTemplate = localEntityIdTemplate;
 	}
 
@@ -119,9 +144,19 @@ public class RelyingPartyRegistration {
 	 * Contains the URL for which to send the SAML 2 Authentication Request to initiate
 	 * a single sign on flow.
 	 * @return a IDP URL that accepts REDIRECT or POST binding for authentication requests
+	 * @deprecated use {@link #getIdpSsoConfiguration()} to retrieve IDP web SSO configurations
 	 */
 	public String getIdpWebSsoUrl() {
-		return this.idpWebSsoUrl;
+		return this.idpSsoConfiguration.idpWebSsoUrl;
+	}
+
+	/**
+	 * Returns specific configuration around the IDP SSO endpoint
+	 * @return the IDP SSO endpoint configuration
+	 * @since 5.3
+	 */
+	public IdpSsoConfiguration getIdpSsoConfiguration() {
+		return this.idpSsoConfiguration;
 	}
 
 	/**
@@ -200,13 +235,73 @@ public class RelyingPartyRegistration {
 		return new Builder(registrationId);
 	}
 
+	/**
+	 * Configuration for IDP SSO endpoint configuration
+	 * @since 5.3
+	 */
+	public static class IdpSsoConfiguration {
+		private final String idpWebSsoUrl;
+		private final boolean signAuthNRequest;
+		private final Saml2MessageBinding binding;
+		private final Saml2SignatureType signatureType;
+
+		private IdpSsoConfiguration(
+				String idpWebSsoUrl,
+				boolean signAuthNRequest,
+				Saml2MessageBinding binding,
+				Saml2SignatureType signatureType) {
+			notNull(idpWebSsoUrl, "idpWebSsoUrl cannot be null");
+			notNull(binding, "binding cannot be null");
+			notNull(signatureType, "signatureType cannot be null");
+			this.idpWebSsoUrl = idpWebSsoUrl;
+			this.signAuthNRequest = signAuthNRequest;
+			this.binding = binding;
+			this.signatureType = signatureType;
+		}
+
+		/**
+		 * Contains the URL for which to send the SAML 2 Authentication Request to initiate
+		 * a single sign on flow.
+		 * @return a IDP URL that accepts REDIRECT or POST binding for authentication requests
+		 */
+		public String getIdpWebSsoUrl() {
+			return idpWebSsoUrl;
+		}
+
+		/**
+		 * @return {@code true} if AuthNRequests from this relying party to the IDP should be signed
+		 * {@code false} if no signature is required.
+		 */
+		public boolean isSignAuthNRequest() {
+			return signAuthNRequest;
+		}
+
+		/**
+		 * @return the type of SAML 2 Binding the AuthNRequest should be sent on
+		 */
+		public Saml2MessageBinding getBinding() {
+			return binding;
+		}
+
+		/**
+		 * Returns the signature type that should be used when sending AuthNRequest messages
+		 * If the {@link Saml2SignatureType#SIMPLE_SIGNATURE} is indicated, then the two parameters,
+		 * {@code Signature} and {@code SigAlg} will be set on as query parameters on a {@link Saml2MessageBinding#REDIRECT}
+		 * binding and as form data parameters on the {@link Saml2MessageBinding#POST} binding.
+		 * @return the type of signature strategy that should used when signing AuthNRequest messages
+		 */
+		public Saml2SignatureType getSignatureType() {
+			return signatureType;
+		}
+	}
+
 	public static class Builder {
 		private String registrationId;
 		private String remoteIdpEntityId;
-		private String idpWebSsoUrl;
 		private String assertionConsumerServiceUrlTemplate;
 		private List<Saml2X509Credential> credentials = new LinkedList<>();
 		private String localEntityIdTemplate = "{baseUrl}/saml2/service-provider-metadata/{registrationId}";
+		private IdpSsoConfigurationBuilder idpSsoConfiguration = new IdpSsoConfigurationBuilder();
 
 		private Builder(String registrationId) {
 			this.registrationId = registrationId;
@@ -250,9 +345,20 @@ public class RelyingPartyRegistration {
 		 * Sets the {@code SSO URL} for the remote asserting party, the Identity Provider.
 		 * @param url - a URL that accepts authentication requests via REDIRECT or POST bindings
 		 * @return this object
+		 * @deprecated use {@link #idpSsoConfiguration(Consumer<IdpSsoConfigurationBuilder>)}
 		 */
 		public Builder idpWebSsoUrl(String url) {
-			this.idpWebSsoUrl = url;
+			idpSsoConfiguration(config -> config.idpWebSsoUrl(url));
+			return this;
+		}
+
+		/**
+		 * Configures the IDP SSO endpoint
+		 * @param idpSsoConfig a consumer that configures the IDP SSO endpoint
+		 * @return this object
+		 */
+		public Builder idpSsoConfiguration(Consumer<IdpSsoConfigurationBuilder> idpSsoConfig) {
+			idpSsoConfig.accept(this.idpSsoConfiguration);
 			return this;
 		}
 
@@ -288,15 +394,78 @@ public class RelyingPartyRegistration {
 			return this;
 		}
 
+		/**
+		 * Constructs a RelyingPartyRegistration object based on the builder configurations
+		 * @return a RelyingPartyRegistration instance
+		 */
 		public RelyingPartyRegistration build() {
 			return new RelyingPartyRegistration(
 					remoteIdpEntityId,
 					registrationId,
 					assertionConsumerServiceUrlTemplate,
-					idpWebSsoUrl,
+					new IdpSsoConfiguration(
+							idpSsoConfiguration.idpWebSsoUrl,
+							idpSsoConfiguration.signAuthNRequest,
+							idpSsoConfiguration.binding,
+							idpSsoConfiguration.signatureType
+					),
 					credentials,
 					localEntityIdTemplate
 			);
+		}
+	}
+
+	/**
+	 * Builder for IDP SSO endpoint configuration
+	 * @since 5.3
+	 */
+	public static class IdpSsoConfigurationBuilder {
+		private String idpWebSsoUrl;
+		private boolean signAuthNRequest = true;
+		private Saml2MessageBinding binding = Saml2MessageBinding.REDIRECT;
+		private Saml2SignatureType signatureType = Saml2SignatureType.XML_SIGNATURE;
+
+		/**
+		 * Sets the {@code SSO URL} for the remote asserting party, the Identity Provider.
+		 * @param url - a URL that accepts authentication requests via REDIRECT or POST bindings
+		 * @return this object
+		 */
+		public IdpSsoConfigurationBuilder idpWebSsoUrl(String url) {
+			this.idpWebSsoUrl = url;
+			return this;
+		}
+
+		/**
+		 * Set to true if the AuthNRequest message should be signed
+		 * @param signAuthNRequest true if the message should be signed
+		 * @return this object
+		 */
+		public IdpSsoConfigurationBuilder signAuthNRequest(boolean signAuthNRequest) {
+			this.signAuthNRequest = signAuthNRequest;
+			return this;
+		}
+
+		/**
+		 * Sets the message binding to be used when sending an AuthNRequest message
+		 * @param binding either {@link Saml2MessageBinding#POST} or {@link Saml2MessageBinding#REDIRECT}
+		 * @return this object
+		 */
+		public IdpSsoConfigurationBuilder binding(Saml2MessageBinding binding) {
+			this.binding = binding;
+			return this;
+		}
+
+		/**
+		 * Sets the signature type to be used when signing an AuthNRequest message.
+		 * The signature type is ignored if {@link #signAuthNRequest} is invoked with a {@code false} parameter
+		 * @param signatureType the signature type,
+		 *                      either {@link Saml2SignatureType#XML_SIGNATURE} or
+		 *                      {@link Saml2SignatureType#SIMPLE_SIGNATURE}
+		 * @return
+		 */
+		public IdpSsoConfigurationBuilder signatureType(Saml2SignatureType signatureType) {
+			this.signatureType = signatureType;
+			return this;
 		}
 	}
 
