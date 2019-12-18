@@ -17,12 +17,10 @@
 package org.springframework.security.saml2.provider.service.servlet.filter;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -35,6 +33,7 @@ import org.springframework.web.util.UriUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.SIMPLE_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.TestSaml2SigningCredentials.signingCredential;
 
 public class Saml2WebSsoAuthenticationRequestFilterTests {
@@ -92,6 +91,24 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 		filter.doFilterInternal(request, response, filterChain);
 		assertThat(response.getHeader("Location"))
 				.contains("RelayState="+relayStateEncoded)
+				.startsWith(IDP_SSO_URL);
+	}
+
+	@Test
+	public void doFilterWhenSimpleSignatureSpecifiedThenSignatureParametersAreInTheRedirectURL() throws Exception {
+		when(repository.findByRegistrationId("registration-id")).thenReturn(
+				rpBuilder
+						.idpSsoConfiguration(c -> c.signatureType(SIMPLE_SIGNATURE))
+						.build()
+		);
+		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
+		final String relayStateEncoded = UriUtils.encode(relayStateValue, StandardCharsets.ISO_8859_1);
+		request.setParameter("RelayState", relayStateValue);
+		filter.doFilterInternal(request, response, filterChain);
+		assertThat(response.getHeader("Location"))
+				.contains("RelayState="+relayStateEncoded)
+				.contains("SigAlg=")
+				.contains("Signature=")
 				.startsWith(IDP_SSO_URL);
 	}
 
