@@ -28,6 +28,20 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars: &gradle_vars
+          openjdk-tag: ((openjdk-8-tag))
+          build-cmd: --version
+          build-arg1: ((build-arg-empty))
+          build-arg2: ((build-arg-empty))
+          build-arg3: ((build-arg-empty))
+          build-arg4: ((build-arg-empty))
+          build-arg5: ((build-arg-empty))
+          build-arg6: ((build-arg-empty))
+          build-arg7: ((build-arg-empty))
+          build-arg8: ((build-arg-empty))
+        timeout: ((task-timeout))
       - task: build-jdk-8
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
@@ -48,6 +62,11 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+        timeout: ((task-timeout))
       - task: build-jdk-8
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
@@ -62,6 +81,11 @@ jobs:
     plan:
     - get: git-repo
       trigger: true
+    - task: jdk-version
+      file: git-repo/ci/tasks/gradle-command.yml
+      vars:
+        <<: *gradle_vars
+      timeout: ((task-timeout))
     - task: build-jdk-8
       file: git-repo/ci/tasks/gradle-command.yml
       vars: {
@@ -79,6 +103,12 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-9-tag))
+        timeout: ((task-timeout))
       - task: build-jdk-9
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
@@ -93,6 +123,12 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-10-tag))
+        timeout: ((task-timeout))
       - task: build-jdk-10
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
@@ -107,6 +143,12 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-11-tag))
+        timeout: ((task-timeout))
       - task: build-jdk-11
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
@@ -121,6 +163,12 @@ jobs:
     plan:
       - get: git-repo
         trigger: true
+      - task: jdk-version
+        file: git-repo/ci/tasks/gradle-command.yml
+        vars:
+          <<: *gradle_vars
+          openjdk-tag: ((openjdk-12-tag))
+        timeout: ((task-timeout))
       - task: build-jdk-12
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
