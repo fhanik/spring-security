@@ -18,5 +18,12 @@ The pipeline can be deployed using the following command:
 $ fly -t spring-security set-pipeline -p spring-security -c ci/pipeline.yml -l ci/parameters.yml
 ----
 
+You can log into a container for a specific job, in this case the JDK 10 build
+
+[source]
+----
+$ fly -t spring-security intercept -j spring-security/build-jdk10
+----
+
 NOTE: This assumes that you have credhub integration configured with the appropriate
 secrets, once secrets are required.
