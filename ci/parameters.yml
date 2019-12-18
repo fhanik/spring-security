@@ -14,8 +14,8 @@ bintray-repo: "jars"
 task-timeout: 1h00m
 openjdk-8-tag: 8-jdk
 openjdk-9-tag: 9-jdk
-#the tag 10-jdk throws a generics error during compilation
-openjdk-10-tag: 10-jdk-experimental
+#the tag 10-jdk throws a generics error during compilation, try to use 10-jdk-experimental
+openjdk-10-tag: 10-jdk
 openjdk-11-tag: 11-jdk
 openjdk-12-tag: 12-jdk
 build-java-8-cmd: build
