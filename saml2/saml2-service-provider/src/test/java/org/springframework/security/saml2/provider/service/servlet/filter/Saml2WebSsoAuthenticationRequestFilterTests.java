@@ -28,6 +28,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,7 +141,7 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 						.build()
 		);
 		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
-		final String relayStateEncoded = UriUtils.encode(relayStateValue, StandardCharsets.ISO_8859_1);
+		final String relayStateEncoded = HtmlUtils.htmlEscape(relayStateValue);
 		request.setParameter("RelayState", relayStateValue);
 		filter.doFilterInternal(request, response, filterChain);
 		Assert.assertNull("Location header should not be present", response.getHeader("Location"));
