@@ -4,7 +4,7 @@ spring:
       relyingparty:
         registration:
           simplesamlphp:
-            signing:
+            signing: &signing_ref
               credentials:
                 - private-key-location: "classpath:credentials/rp-private.key"
                   certificate-location: "classpath:credentials/rp-certificate.crt"
@@ -14,3 +14,28 @@ spring:
                   - certificate-location: "classpath:credentials/idp-certificate.crt"
               entity-id: https://simplesaml-for-spring-saml.cfapps.io/saml2/idp/metadata.php
               sso-url: https://simplesaml-for-spring-saml.cfapps.io/saml2/idp/SSOService.php
+          ssocircle:
+            signing: *signing_ref
+            identityprovider:
+              verification:
+                credentials:
+                  - certificate-location: "classpath:credentials/idp-ssocircle-certificate.crt"
+              entity-id: https://idp.ssocircle.com
+              sso-url: https://idp.ssocircle.com:443/sso/SSORedirect/metaAlias/publicidp
+              #sso-url: https://idp.ssocircle.com:443/sso/SSOPOST/metaAlias/publicidp
+          keycloak:
+            signing: *signing_ref
+            identityprovider:
+              verification:
+                credentials:
+                  - certificate-location: "classpath:credentials/idp-keycloak-certificate.crt"
+              entity-id: http://localhost:8081/auth/realms/demo
+              sso-url: http://localhost:8081/auth/realms/demo/protocol/saml
+          okta-preview-4:
+            signing: *signing_ref
+            identityprovider:
+              verification:
+                credentials:
+                  - certificate-location: "classpath:credentials/idp-okta-certificate.crt"
+              entity-id: http://www.okta.com/k36wkwt1OIRTMZBPGGQF
+              sso-url: https://pivotal.oktapreview.com/app/pivotal_cfsamltemplate4_1/k36wkwt1OIRTMZBPGGQF/sso/saml
