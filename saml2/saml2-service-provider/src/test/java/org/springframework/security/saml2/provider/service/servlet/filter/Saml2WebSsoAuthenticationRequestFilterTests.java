@@ -33,9 +33,9 @@ import org.springframework.web.util.UriUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT_XML_SIGNATURE;
+import static org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding.POST;
+import static org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding.REDIRECT;
+import static org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding.REDIRECT_XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.TestSaml2SigningCredentials.signingCredential;
 
 public class Saml2WebSsoAuthenticationRequestFilterTests {

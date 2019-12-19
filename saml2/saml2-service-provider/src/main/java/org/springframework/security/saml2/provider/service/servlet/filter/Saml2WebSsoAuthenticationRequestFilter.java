@@ -23,6 +23,7 @@ import org.springframework.security.saml2.provider.service.authentication.Saml2A
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
+import org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher.MatchResult;
@@ -44,10 +45,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static java.lang.String.format;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding.POST;
+import static org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding.REDIRECT_XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.deflate;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.encode;
+import static org.springframework.web.util.HtmlUtils.htmlEscape;
 
 /**
  * @since 5.2
@@ -97,6 +101,7 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 		if (POST == relyingParty.getIdpSsoConfiguration().getBinding()) {
 			String formData = createSamlRequestFormData(request, relyingParty);
 			response.setContentType(MediaType.TEXT_HTML_VALUE);
+			response.setCharacterEncoding(UTF_8.name());
 			response.getWriter().write(formData);
 		}
 		else {
@@ -108,19 +113,20 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 	private RequestData getRequestParameters(
 			HttpServletRequest request,
 			RelyingPartyRegistration relyingParty,
-			boolean deflate) {
+			boolean isRedirect) {
 		boolean sign = relyingParty.getIdpSsoConfiguration().isSignAuthNRequest();
-		boolean useXmlSig = relyingParty.getIdpSsoConfiguration().getBinding() != REDIRECT;
+		boolean useXmlSig = useXmlSig(relyingParty);
 		Saml2AuthenticationRequest authNRequest = createAuthenticationRequest(relyingParty, request, sign && useXmlSig);
 		String xml = this.authenticationRequestFactory.createAuthenticationRequest(authNRequest);
-		String encoded = deflate ? encode(deflate(xml)) : encode(xml.getBytes(StandardCharsets.UTF_8));
-		String relayState = request.getParameter("RelayState");
+		String encoded = encodeAndEscapeXml(xml, isRedirect);
 		Map<String, String> queryParams = new LinkedHashMap<>();
-		queryParams.put("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
+		queryParams.put("SAMLRequest", encoded);
+		String relayState = request.getParameter("RelayState");
 		if (StringUtils.hasText(relayState)) {
-			queryParams.put("RelayState", UriUtils.encode(relayState, StandardCharsets.ISO_8859_1));
+			String relayStateEncoded = escapeValue(relayState, isRedirect);
+			queryParams.put("RelayState", relayStateEncoded);
 		}
-		if (sign && !useXmlSig && deflate) {
+		if (sign && !useXmlSig && isRedirect) {
 			//SimpleSignature
 			queryParams = this.authenticationRequestFactory.simpleSignSaml2Message(
 					queryParams,
@@ -128,6 +134,26 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 			);
 		}
 		return new RequestData(authNRequest, queryParams);
+	}
+
+	private String encodeAndEscapeXml(String xml, boolean isRedirect) {
+		return isRedirect ?
+				escapeValue(encode(deflate(xml)), isRedirect) :
+				escapeValue(encode(xml.getBytes(StandardCharsets.UTF_8)), isRedirect);
+	}
+
+	private String escapeValue(String value, boolean isRedirect) {
+		if (isRedirect) {
+			return UriUtils.encode(value, ISO_8859_1);
+		}
+		else {
+			return htmlEscape(value);
+		}
+	}
+
+	private boolean useXmlSig(RelyingPartyRegistration relyingParty) {
+		final Saml2MessageBinding binding = relyingParty.getIdpSsoConfiguration().getBinding();
+		return binding == POST || binding == REDIRECT_XML_SIGNATURE;
 	}
 
 	private Saml2AuthenticationRequest createAuthenticationRequest(
