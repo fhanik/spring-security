@@ -19,8 +19,8 @@ package org.springframework.security.saml2.provider.service.servlet.filter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -33,7 +33,9 @@ import org.springframework.web.util.UriUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
 import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.SIMPLE_SIGNATURE;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.TestSaml2SigningCredentials.signingCredential;
 
 public class Saml2WebSsoAuthenticationRequestFilterTests {
@@ -42,7 +44,7 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 	private Saml2WebSsoAuthenticationRequestFilter filter;
 	private RelyingPartyRegistrationRepository repository = mock(RelyingPartyRegistrationRepository.class);
 	private MockHttpServletRequest request;
-	private HttpServletResponse response;
+	private MockHttpServletResponse response;
 	private MockFilterChain filterChain;
 	private RelyingPartyRegistration.Builder rpBuilder;
 
@@ -112,4 +114,49 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 				.startsWith(IDP_SSO_URL);
 	}
 
+	@Test
+	public void doFilterWhenSimpleSignatureSpecifiedForPostThenSignatureParametersAreInTheForm() throws Exception {
+		when(repository.findByRegistrationId("registration-id")).thenReturn(
+				rpBuilder
+						.idpSsoConfiguration(c -> c.signatureType(SIMPLE_SIGNATURE))
+						.idpSsoConfiguration(c -> c.binding(POST))
+						.build()
+		);
+		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
+		final String relayStateEncoded = UriUtils.encode(relayStateValue, StandardCharsets.ISO_8859_1);
+		request.setParameter("RelayState", relayStateValue);
+		filter.doFilterInternal(request, response, filterChain);
+		Assert.assertNull("Location header should not be present", response.getHeader("Location"));
+		String content = response.getContentAsString();
+		assertThat(content)
+				.contains("\"RelayState\"")
+				.contains(relayStateEncoded)
+				.contains("\"SigAlg\"")
+				.contains("\"Signature")
+				.contains("<form")
+				.contains(IDP_SSO_URL);
+	}
+
+	@Test
+	public void doFilterWhenXmlSignatureSpecifiedForPostThenNoSignatureParametersAreInTheForm() throws Exception {
+		when(repository.findByRegistrationId("registration-id")).thenReturn(
+				rpBuilder
+						.idpSsoConfiguration(c -> c.signatureType(XML_SIGNATURE))
+						.idpSsoConfiguration(c -> c.binding(POST))
+						.build()
+		);
+		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
+		final String relayStateEncoded = UriUtils.encode(relayStateValue, StandardCharsets.ISO_8859_1);
+		request.setParameter("RelayState", relayStateValue);
+		filter.doFilterInternal(request, response, filterChain);
+		Assert.assertNull("Location header should not be present", response.getHeader("Location"));
+		String content = response.getContentAsString();
+		assertThat(content)
+				.contains("\"RelayState\"")
+				.contains(relayStateEncoded)
+				.doesNotContain("\"SigAlg\"")
+				.doesNotContain("\"Signature")
+				.contains("<form")
+				.contains(IDP_SSO_URL);
+	}
 }
