@@ -31,11 +31,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class Saml2UtilsTests {
 
 	private static Base64 UNCHUNKED_ENCODER = new Base64(0, new byte[]{'\n'});
+	private static final Base64 CHUNKED_ENCODER = new Base64(76, new byte[] { '\n' });
 
 	@Test
 	public void decodeWhenUsingApacheCommonsBase64ThenXmlIsValid() throws Exception {
 		String responseUrlDecoded = getSsoCircleEncodedXml();
 		String xml = new String(UNCHUNKED_ENCODER.decode(responseUrlDecoded.getBytes(UTF_8)), UTF_8);
+		validateSsoCircleXml(xml);
+	}
+
+	@Test
+	public void decodeWhenUsingApacheCommonsBase64ChunkedThenXmlIsValid() throws Exception {
+		String responseUrlDecoded = getSsoCircleEncodedXml();
+		String xml = new String(CHUNKED_ENCODER.decode(responseUrlDecoded.getBytes(UTF_8)), UTF_8);
 		validateSsoCircleXml(xml);
 	}
 
