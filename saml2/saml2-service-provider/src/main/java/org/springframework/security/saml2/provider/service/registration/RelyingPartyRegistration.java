@@ -423,7 +423,7 @@ public class RelyingPartyRegistration {
 		private String idpWebSsoUrl;
 		private boolean signAuthNRequest = true;
 		private Saml2MessageBinding binding = Saml2MessageBinding.REDIRECT;
-		private Saml2SignatureType signatureType = Saml2SignatureType.XML_SIGNATURE;
+		private Saml2SignatureType signatureType = Saml2SignatureType.SIMPLE_SIGNATURE;
 
 		/**
 		 * Sets the {@code SSO URL} for the remote asserting party, the Identity Provider.
