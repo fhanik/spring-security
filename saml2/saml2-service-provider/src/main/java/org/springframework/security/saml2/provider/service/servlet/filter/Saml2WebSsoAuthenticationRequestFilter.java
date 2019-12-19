@@ -44,8 +44,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static java.lang.String.format;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
 import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.deflate;
 import static org.springframework.security.saml2.provider.service.servlet.filter.Saml2Utils.encode;
 
@@ -94,14 +94,14 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 			this.logger.debug(format("Creating SAML2 SP Authentication Request for IDP[%s]", registrationId));
 		}
 		RelyingPartyRegistration relyingParty = this.relyingPartyRegistrationRepository.findByRegistrationId(registrationId);
-		if (REDIRECT == relyingParty.getIdpSsoConfiguration().getBinding()) {
-			String redirectUrl = createSamlRequestRedirectUrl(request, relyingParty);
-			response.sendRedirect(redirectUrl);
-		}
-		else {
+		if (POST == relyingParty.getIdpSsoConfiguration().getBinding()) {
 			String formData = createSamlRequestFormData(request, relyingParty);
 			response.setContentType(MediaType.TEXT_HTML_VALUE);
 			response.getWriter().write(formData);
+		}
+		else {
+			String redirectUrl = createSamlRequestRedirectUrl(request, relyingParty);
+			response.sendRedirect(redirectUrl);
 		}
 	}
 
@@ -110,34 +110,22 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 			RelyingPartyRegistration relyingParty,
 			boolean deflate) {
 		boolean sign = relyingParty.getIdpSsoConfiguration().isSignAuthNRequest();
-		boolean useXmlSig = relyingParty.getIdpSsoConfiguration().getSignatureType() == XML_SIGNATURE;
+		boolean useXmlSig = relyingParty.getIdpSsoConfiguration().getBinding() != REDIRECT;
 		Saml2AuthenticationRequest authNRequest = createAuthenticationRequest(relyingParty, request, sign && useXmlSig);
 		String xml = this.authenticationRequestFactory.createAuthenticationRequest(authNRequest);
 		String encoded = deflate ? encode(deflate(xml)) : encode(xml.getBytes(StandardCharsets.UTF_8));
 		String relayState = request.getParameter("RelayState");
 		Map<String, String> queryParams = new LinkedHashMap<>();
-		if (deflate) {
-			queryParams.put("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
-		}
-		else {
-			queryParams.put("SAMLRequest", encoded);
-		}
+		queryParams.put("SAMLRequest", UriUtils.encode(encoded, StandardCharsets.ISO_8859_1));
 		if (StringUtils.hasText(relayState)) {
 			queryParams.put("RelayState", UriUtils.encode(relayState, StandardCharsets.ISO_8859_1));
 		}
-		if (sign && !useXmlSig) {
+		if (sign && !useXmlSig && deflate) {
 			//SimpleSignature
-			Map<String, String> processed = this.authenticationRequestFactory.simpleSignSaml2Message(
+			queryParams = this.authenticationRequestFactory.simpleSignSaml2Message(
 					queryParams,
 					relyingParty.getCredentials()
 			);
-			if (deflate) {
-				queryParams = processed;
-			}
-			else {
-				queryParams.put("Signature", processed.get("Signature"));
-				queryParams.put("SigAlg", processed.get("SigAlg"));
-			}
 		}
 		return new RequestData(authNRequest, queryParams);
 	}
@@ -203,18 +191,6 @@ public class Saml2WebSsoAuthenticationRequestFilter extends OncePerRequestFilter
 			postHtml
 					.append("                <input type=\"hidden\" name=\"RelayState\" value=\"")
 					.append(data.getRequestParameters().get("RelayState"))
-					.append("\"/>\n");
-		}
-		if (data.getRequestParameters().containsKey("SigAlg")) {
-			postHtml
-					.append("                <input type=\"hidden\" name=\"SigAlg\" value=\"")
-					.append(data.getRequestParameters().get("SigAlg"))
-					.append("\"/>\n");
-		}
-		if (data.getRequestParameters().containsKey("Signature")) {
-			postHtml
-					.append("                <input type=\"hidden\" name=\"Signature\" value=\"")
-					.append(data.getRequestParameters().get("Signature"))
 					.append("\"/>\n");
 		}
 		postHtml

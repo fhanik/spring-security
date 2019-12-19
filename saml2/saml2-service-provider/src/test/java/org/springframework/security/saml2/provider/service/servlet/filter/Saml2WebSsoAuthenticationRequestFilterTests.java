@@ -34,8 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.POST;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.SIMPLE_SIGNATURE;
-import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2SignatureType.XML_SIGNATURE;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT;
+import static org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Saml2MessageBinding.REDIRECT_XML_SIGNATURE;
 import static org.springframework.security.saml2.provider.service.servlet.filter.TestSaml2SigningCredentials.signingCredential;
 
 public class Saml2WebSsoAuthenticationRequestFilterTests {
@@ -100,7 +100,7 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 	public void doFilterWhenSimpleSignatureSpecifiedThenSignatureParametersAreInTheRedirectURL() throws Exception {
 		when(repository.findByRegistrationId("registration-id")).thenReturn(
 				rpBuilder
-						.idpSsoConfiguration(c -> c.signatureType(SIMPLE_SIGNATURE))
+						.idpSsoConfiguration(c -> c.binding(REDIRECT))
 						.build()
 		);
 		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
@@ -115,33 +115,27 @@ public class Saml2WebSsoAuthenticationRequestFilterTests {
 	}
 
 	@Test
-	public void doFilterWhenSimpleSignatureSpecifiedForPostThenSignatureParametersAreInTheForm() throws Exception {
+	public void doFilterWhenXmlSignatureSpecifiedThenSignatureParametersAreNotInTheRedirectURL() throws Exception {
 		when(repository.findByRegistrationId("registration-id")).thenReturn(
 				rpBuilder
-						.idpSsoConfiguration(c -> c.signatureType(SIMPLE_SIGNATURE))
-						.idpSsoConfiguration(c -> c.binding(POST))
+						.idpSsoConfiguration(c -> c.binding(REDIRECT_XML_SIGNATURE))
 						.build()
 		);
 		final String relayStateValue = "https://my-relay-state.example.com?with=param&other=param";
 		final String relayStateEncoded = UriUtils.encode(relayStateValue, StandardCharsets.ISO_8859_1);
 		request.setParameter("RelayState", relayStateValue);
 		filter.doFilterInternal(request, response, filterChain);
-		Assert.assertNull("Location header should not be present", response.getHeader("Location"));
-		String content = response.getContentAsString();
-		assertThat(content)
-				.contains("\"RelayState\"")
-				.contains(relayStateEncoded)
-				.contains("\"SigAlg\"")
-				.contains("\"Signature")
-				.contains("<form")
-				.contains(IDP_SSO_URL);
+		assertThat(response.getHeader("Location"))
+				.contains("RelayState="+relayStateEncoded)
+				.doesNotContain("SigAlg=")
+				.doesNotContain("Signature=")
+				.startsWith(IDP_SSO_URL);
 	}
 
 	@Test
 	public void doFilterWhenXmlSignatureSpecifiedForPostThenNoSignatureParametersAreInTheForm() throws Exception {
 		when(repository.findByRegistrationId("registration-id")).thenReturn(
 				rpBuilder
-						.idpSsoConfiguration(c -> c.signatureType(XML_SIGNATURE))
 						.idpSsoConfiguration(c -> c.binding(POST))
 						.build()
 		);

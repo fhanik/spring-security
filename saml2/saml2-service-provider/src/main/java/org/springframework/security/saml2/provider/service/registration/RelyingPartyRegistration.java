@@ -65,26 +65,14 @@ public class RelyingPartyRegistration {
 
 	/**
 	 * The type of bindings that messages are exchanged using
-	 * Only supported bindings are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST}
-	 * and {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect}
+	 * Supported bindings are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST}
+	 * and {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect}.
+	 * In addition there is support for {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect}
+	 * with an XML signature in the message rather than query parameters.
 	 * @since 5.3
 	 */
 	public enum Saml2MessageBinding {
-		POST, REDIRECT
-	}
-
-	/**
-	 * The type of signatures that a message can be signed with
-	 * Supported signature types are {@code urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign} and
-	 * {@code XML Signatures}
-	 * This implementation supports both signature types on either {@link Saml2MessageBinding#REDIRECT} or
-	 * the {@link Saml2MessageBinding#POST} bindings
-	 * @since 5.3
-	 */
-	public enum Saml2SignatureType {
-
-		XML_SIGNATURE,
-		SIMPLE_SIGNATURE
+		POST, REDIRECT, REDIRECT_XML_SIGNATURE
 	}
 
 	private final String registrationId;
@@ -243,20 +231,16 @@ public class RelyingPartyRegistration {
 		private final String idpWebSsoUrl;
 		private final boolean signAuthNRequest;
 		private final Saml2MessageBinding binding;
-		private final Saml2SignatureType signatureType;
 
 		private IdpSsoConfiguration(
 				String idpWebSsoUrl,
 				boolean signAuthNRequest,
-				Saml2MessageBinding binding,
-				Saml2SignatureType signatureType) {
+				Saml2MessageBinding binding) {
 			notNull(idpWebSsoUrl, "idpWebSsoUrl cannot be null");
 			notNull(binding, "binding cannot be null");
-			notNull(signatureType, "signatureType cannot be null");
 			this.idpWebSsoUrl = idpWebSsoUrl;
 			this.signAuthNRequest = signAuthNRequest;
 			this.binding = binding;
-			this.signatureType = signatureType;
 		}
 
 		/**
@@ -283,16 +267,6 @@ public class RelyingPartyRegistration {
 			return binding;
 		}
 
-		/**
-		 * Returns the signature type that should be used when sending AuthNRequest messages
-		 * If the {@link Saml2SignatureType#SIMPLE_SIGNATURE} is indicated, then the two parameters,
-		 * {@code Signature} and {@code SigAlg} will be set on as query parameters on a {@link Saml2MessageBinding#REDIRECT}
-		 * binding and as form data parameters on the {@link Saml2MessageBinding#POST} binding.
-		 * @return the type of signature strategy that should used when signing AuthNRequest messages
-		 */
-		public Saml2SignatureType getSignatureType() {
-			return signatureType;
-		}
 	}
 
 	public static class Builder {
@@ -406,8 +380,7 @@ public class RelyingPartyRegistration {
 					new IdpSsoConfiguration(
 							idpSsoConfiguration.idpWebSsoUrl,
 							idpSsoConfiguration.signAuthNRequest,
-							idpSsoConfiguration.binding,
-							idpSsoConfiguration.signatureType
+							idpSsoConfiguration.binding
 					),
 					credentials,
 					localEntityIdTemplate
@@ -423,10 +396,10 @@ public class RelyingPartyRegistration {
 		private String idpWebSsoUrl;
 		private boolean signAuthNRequest = true;
 		private Saml2MessageBinding binding = Saml2MessageBinding.REDIRECT;
-		private Saml2SignatureType signatureType = Saml2SignatureType.XML_SIGNATURE;
 
 		/**
 		 * Sets the {@code SSO URL} for the remote asserting party, the Identity Provider.
+		 *
 		 * @param url - a URL that accepts authentication requests via REDIRECT or POST bindings
 		 * @return this object
 		 */
@@ -437,6 +410,7 @@ public class RelyingPartyRegistration {
 
 		/**
 		 * Set to true if the AuthNRequest message should be signed
+		 *
 		 * @param signAuthNRequest true if the message should be signed
 		 * @return this object
 		 */
@@ -447,6 +421,7 @@ public class RelyingPartyRegistration {
 
 		/**
 		 * Sets the message binding to be used when sending an AuthNRequest message
+		 *
 		 * @param binding either {@link Saml2MessageBinding#POST} or {@link Saml2MessageBinding#REDIRECT}
 		 * @return this object
 		 */
@@ -454,20 +429,5 @@ public class RelyingPartyRegistration {
 			this.binding = binding;
 			return this;
 		}
-
-		/**
-		 * Sets the signature type to be used when signing an AuthNRequest message.
-		 * The signature type is ignored if {@link #signAuthNRequest} is invoked with a {@code false} parameter
-		 * @param signatureType the signature type,
-		 *                      either {@link Saml2SignatureType#XML_SIGNATURE} or
-		 *                      {@link Saml2SignatureType#SIMPLE_SIGNATURE}
-		 * @return
-		 */
-		public IdpSsoConfigurationBuilder signatureType(Saml2SignatureType signatureType) {
-			this.signatureType = signatureType;
-			return this;
-		}
 	}
-
-
 }
