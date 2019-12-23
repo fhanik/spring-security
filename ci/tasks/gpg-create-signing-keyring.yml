@@ -19,4 +19,3 @@ run:
     - |
       ((pass-phrase))
   dir: git-repo
-
