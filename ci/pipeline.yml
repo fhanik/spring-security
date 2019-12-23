@@ -188,9 +188,9 @@ jobs:
         file: git-repo/ci/tasks/gpg-create-signing-keyring.yml
         vars: {
           openjdk-tag: ((openjdk-8-tag)),
-          private-key: ((private_key)),
-          public-key: ((public_key)),
-          pass-phrase: ((password)),
+          private-key: ((signing-private-key)),
+          public-key: ((signing-public-key)),
+          pass-phrase: ((signing-key-password)),
         }
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
@@ -200,7 +200,7 @@ jobs:
           openjdk-tag: ((openjdk-8-tag)),
           build-cmd: "deployArtifacts",
           build-arg1: "finalizeDeployArtifacts",
-          build-arg2: -Psigning.secretKeyRingFile=((signing-keyring-file)),
+          build-arg2: -Psigning.secretKeyRingFile=trustedkeys.gpg,
           build-arg3: -Psigning.keyId=((signing-key-id)),
           build-arg4: -Psigning.password=((signing-key-password)),
           build-arg5: -PossrhUsername=((sonatype-username)),
