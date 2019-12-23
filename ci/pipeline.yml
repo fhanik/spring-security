@@ -184,6 +184,16 @@ jobs:
       - get: git-repo
         trigger: true
         passed: [build-check, build-jdk8, build-jdk9, build-jdk10, build-jdk11, build-jdk12, build-snapshot]
+      - task: create-gpg-ring
+        file: git-repo/ci/tasks/gpg-create-signing-keyring.yml
+        vars: {
+          openjdk-tag: ((openjdk-8-tag)),
+          private-key: ((private_key)),
+          public-key: ((public_key)),
+          pass-phrase: ((password)),
+        }
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
       - task: deploy-artifacts
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
