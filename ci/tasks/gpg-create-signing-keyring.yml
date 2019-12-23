@@ -10,7 +10,7 @@ inputs:
 outputs:
   - name: git-repo
 run:
-  path: git-repo/ci/tasks/gpg-create-signing-keyring.yml
+  path: ci/tasks/gpg-create-signing-keyring.yml
   args: [((private-key)), ((public-key)), ((pass-phrase))]
   dir: git-repo
 
