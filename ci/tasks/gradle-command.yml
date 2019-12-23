@@ -15,7 +15,7 @@ run:
   args: [
     "clean",
     "assemble",
-#    ((build-cmd)),
+    ((build-cmd)),
     "--no-daemon",
     "--stacktrace",
     "--refresh-dependencies",
