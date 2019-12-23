@@ -11,6 +11,6 @@ outputs:
   - name: git-repo
 run:
   path: ci/tasks/gpg-create-signing-keyring.sh
-  args: [((private-key)), ((public-key)), ((pass-phrase))]
+  args: [((public-key)), ((private-key)), ((pass-phrase))]
   dir: git-repo
 
