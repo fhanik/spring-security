@@ -1,12 +1,11 @@
 #!/bin/bash
 
-set -e -u -x
+set -e -u +x
 
 gpg --version
 
 GIT_REPO="$( cd "$(dirname "$0")"/../.. ; pwd -P )"
 echo "GIT_REPO = $GIT_REPO"
-
 
 echo "Creating GPG Public Key File"
 echo "$1" > /tmp/spring-sec-gpg-public.key
