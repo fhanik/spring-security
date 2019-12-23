@@ -45,7 +45,7 @@ jobs:
       - task: build-jdk-8
         file: git-repo/ci/tasks/gradle-command.yml
         vars: {
-          openjdk-tag: ((openjdk-8-tag)), build-cmd: check,
+          openjdk-tag: ((openjdk-8-tag)), build-cmd: ((build-java-check-cmd)),
           build-arg1: ((build-arg-empty)), build-arg2: ((build-arg-empty)), build-arg3: ((build-arg-empty)), build-arg4: ((build-arg-empty)),
           build-arg5: ((build-arg-empty)), build-arg6: ((build-arg-empty)), build-arg7: ((build-arg-empty)), build-arg8: ((build-arg-empty)),
         }
