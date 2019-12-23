@@ -12,9 +12,6 @@ echo "$1" > /tmp/spring-sec-gpg-public.key
 echo "Creating GPG Private Key File"
 echo "$2" > /tmp/spring-sec-gpg-private.key
 
-cat /tmp/spring-sec-gpg-public.key
-cat /tmp/spring-sec-gpg-private.key
-
 echo "Import public key into keyring"
 gpg --no-default-keyring --keyring $GIT_REPO/trustedkeys.gpg --import /tmp/spring-sec-gpg-public.key
 echo "Import private key into keyring"
