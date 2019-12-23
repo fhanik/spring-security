@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e -u -x
+
 echo $1 > /tmp/spring-sec-gpg-public.key
 echo $2 > /tmp/spring-sec-gpg-private.key
 
