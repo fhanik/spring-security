@@ -1,0 +1,16 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: openjdk
+    tag: ((openjdk-tag))
+inputs:
+  - name: git-repo
+outputs:
+  - name: git-repo
+run:
+  path: git-repo/ci/tasks/gpg-create-signing-keyring.yml
+  args: [((private-key)), ((public-key)), ((pass-phrase))]
+  dir: git-repo
+
