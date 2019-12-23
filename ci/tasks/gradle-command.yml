@@ -14,7 +14,6 @@ run:
   path: ./gradlew
   args: [
     "clean",
-    "assemble",
     ((build-cmd)),
     "--no-daemon",
     "--stacktrace",
