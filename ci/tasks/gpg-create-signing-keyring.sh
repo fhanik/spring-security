@@ -5,9 +5,9 @@ set -e -u -x
 BASEDIR=$(dirname "$0")
 
 echo "Creating GPG Public Key File"
-echo $1 > /tmp/spring-sec-gpg-public.key
+echo "$1" > /tmp/spring-sec-gpg-public.key
 echo "Creating GPG Private Key File"
-echo $2 > /tmp/spring-sec-gpg-private.key
+echo "$2" > /tmp/spring-sec-gpg-private.key
 
 cat /tmp/spring-sec-gpg-public.key
 cat /tmp/spring-sec-gpg-private.key
