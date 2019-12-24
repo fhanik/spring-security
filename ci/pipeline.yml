@@ -201,7 +201,7 @@ jobs:
           build-cmd: "deployArtifacts",
           build-arg1: "finalizeDeployArtifacts",
           build-arg2: -Psigning.secretKeyRingFile=trustedkeys.gpg,
-          build-arg3: -Psigning.keyId=((spring-gpg-passphrase-key-id)),
+          build-arg3: -Psigning.keyId=((spring-gpg-key-id)),
           build-arg4: -Psigning.password=((spring-gpg-passphrase)),
           build-arg5: -PossrhUsername=((sonatype-username)),
           build-arg6: -PossrhPassword=((sonatype-password)),

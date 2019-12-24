@@ -25,4 +25,4 @@ build-java-check-cmd: check
 #build-java-11-cmd: "--version"
 #build-java-check-cmd: "--version"
 build-arg-empty: "-Dplaceholder"
-spring-gpg-passphrase-key-id: 9A2C7A98E457C53D
+spring-gpg-key-id: 9A2C7A98E457C53D
