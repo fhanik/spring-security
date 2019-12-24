@@ -20,5 +20,9 @@ openjdk-11-tag: 11-jdk
 openjdk-12-tag: 12-jdk
 build-java-8-cmd: build
 build-java-11-cmd: test
+build-java-check-cmd: check
+#build-java-8-cmd: "--version"
+#build-java-11-cmd: "--version"
+#build-java-check-cmd: "--version"
 build-arg-empty: "-Dplaceholder"
-
+spring-gpg-passphrase-key-id: 9A2C7A98E457C53D
