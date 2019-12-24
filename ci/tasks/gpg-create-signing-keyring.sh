@@ -21,4 +21,4 @@ echo "Deleting temporary key files"
 rm -f /tmp/spring-sec-gpg-public.key
 rm -f /tmp/spring-sec-gpg-private.key
 
-echo "GPG keyring creation completed"
+echo "\nGPG keyring creation completed"
