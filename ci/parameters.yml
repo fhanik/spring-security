@@ -1,11 +1,11 @@
+github-repo-name: "fhanik/spring-security"
+branch: "feature/concourse"
 email-server: "smtp.svc.pivotal.io"
 email-from: "ci@spring.io"
 email-to: ["fhanik@pivotal.io"]
 github-repo: "https://github.com/fhanik/spring-security.git"
-github-repo-name: "fhanik/spring-security"
 docker-hub-organization: "springci"
 artifactory-server: "https://repo.spring.io"
-branch: "feature/concourse"
 build-name: "spring-security"
 pipeline-name: "spring-security"
 concourse-url: "https://ci.spring.io"

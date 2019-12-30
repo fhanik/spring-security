@@ -4,24 +4,29 @@ resource_types:
     source:
       repository: cfcommunity/slack-notification-resource
       tag: latest
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: jtarchie/pr
 resources:
   - name: git-repo
     type: git
     source:
       uri: ((github-repo))
       branch: ((branch))
-  - name: git-pull-request
-    type: pull-request
-    icon: source-pull
-    source:
-      repo: ((github-repo-name))
-      base: ((branch))
-      ignore_paths: ["ci/*"]
   - name: slack-alert
     icon: slack
     type: slack-notification
     source:
       url: ((slack-webhook-url))
+  - name: git-pull-request
+    type: pull-request
+    icon: source-pull
+    source:
+      access_token: ((github-ci-pull-request-token))
+      repo: ((github-repo-name))
+      base: ((branch))
+      ignore_paths: ["ci/*"]
 
 jobs:
   - name: build-check
