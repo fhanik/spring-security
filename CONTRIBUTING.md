@@ -1,3 +1,5 @@
+_Testing Concourse Pull Requests - Commit 2_
+
 _Have something you'd like to contribute to the framework? We welcome pull requests, but ask that you carefully read this document first to understand how best to submit them; what kind of changes are likely to be accepted; and what to expect from the Spring Security team when evaluating your submission._
 
 _Please refer back to this document as a checklist before issuing any pull request; this will save time for everyone!_
@@ -27,7 +29,7 @@ As of new versions of Spring Tool Suite, you might need to install Groovy Eclips
 Help->Install New Software...->Add the following URL into _Work with_ field:
 https://dist.springsource.org/snapshot/GRECLIPSE/e4.7/
 
-# Understand the basics 
+# Understand the basics
 Not sure what a pull request is, or how to submit one? Take a look at GitHub's excellent [help documentation first](https://help.github.com/articles/using-pull-requests).
 
 # Search GitHub issues; create an issue if necessary
@@ -64,7 +66,7 @@ Branches used when submitting pull requests should preferably be named according
 Remember each ticket should be focused on a single item of interest since the tickets are used to produce the changelog. Since each commit should be tied to a single GitHub issue, ensure that your commits are focused. For example, do not include an update to a transitive library in your commit unless the GitHub is to update the library. Reviewing your commits is essential before sending a pull request.
 
 # Mind the whitespace
-Please carefully follow the whitespace and formatting conventions already present in the framework. 
+Please carefully follow the whitespace and formatting conventions already present in the framework.
 
 1. Tabs, not spaces
 1. Unix (LF), not dos (CRLF) line endings
@@ -122,7 +124,7 @@ e.g.
 </pre>
 
 # Submit JUnit test cases for all behavior changes
-Search the codebase to find related unit tests and add additional `@Test` methods within. 
+Search the codebase to find related unit tests and add additional `@Test` methods within.
 
 1. Any new tests should end in the name Tests (note this is plural). For example, a valid name would be `FilterChainProxyTests`. An invalid name would be `FilterChainProxyTest`.
 2. New test methods should not start with test. This is an old JUnit3 convention and is not necessary since the method is annotated with @Test.
@@ -191,7 +193,7 @@ Fixes gh-123
 1. Keep the subject line to 50 characters or less if possible
 2. Do not end the subject line with a period
 3. In the body of the commit message, explain how things worked before this commit, what has changed, and how things work now
-3. Include Fixes gh-<issue-number> at the end if this fixes a GitHub issue  
+3. Include Fixes gh-<issue-number> at the end if this fixes a GitHub issue
 5. Avoid markdown, including back-ticks identifying code
 
 # Run all tests prior to submission
