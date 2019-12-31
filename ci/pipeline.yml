@@ -92,7 +92,7 @@ jobs:
       vars:
         <<: *gradle_vars
         openjdk-tag: ((openjdk-8-tag))
-        build-cmd: ((build-java-11-cmd))
+        build-cmd: ((build-java-8-cmd))
         build-arg1: "-PforceMavenRepositories=snapshot"
         build-arg2: "-PspringVersion=5.+"
         build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT"
