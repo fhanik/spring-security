@@ -1,0 +1,18 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: openjdk
+    tag: ((openjdk-tag))
+inputs:
+  - name: git-repo
+outputs:
+  - name: git-repo
+run:
+  path: ci/tasks/write-file.sh
+  args:
+    - |
+      ((private-key))
+    - ((file-name))
+  dir: git-repo

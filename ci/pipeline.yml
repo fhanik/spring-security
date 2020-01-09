@@ -97,6 +97,7 @@ jobs:
         build-arg2: "-PspringVersion=5.+"
         build-arg3: "-PreactorVersion=Dysprosium-BUILD-SNAPSHOT"
         build-arg4: "-PspringDataVersion=Lovelace-BUILD-SNAPSHOT"
+        build-arg5: "-PlocksDisabled"
       timeout: ((task-timeout))
       on_failure: *on_failure_tag
   - name: build-jdk9
@@ -201,30 +202,37 @@ jobs:
           build-arg8: -PartifactoryPassword=((artifactory-password))
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
-  - name: deploy-docs
+  - name: deploy-docs-and-schemas
     plan:
       - get: git-repo
         trigger: true
         passed: [deploy-artifacts]
-      - task: deploy-artifacts
+      - task: create-docs-ssh-key
+        file: git-repo/ci/tasks/write-file.yml
+        vars:
+          openjdk-tag: ((openjdk-8-tag))
+          private-key: ((docs_ssh_key.private_key))
+          file-name: deploy-docs.key
+        timeout: ((task-timeout))
+        on_failure: *on_failure_tag
+      - task: deploy-docs
         file: git-repo/ci/tasks/gradle-command.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
-          build-cmd: "clean"
+          build-cmd: "--version"
+          build-arg1: -PdeployDocsSshKeyPath=deploy-docs.key
+          build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
-  - name: deploy-schemas
-    plan:
-      - get: git-repo
-        trigger: true
-        passed: [deploy-docs]
       - task: deploy-schemas
         file: git-repo/ci/tasks/gradle-command.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
-          build-cmd: "clean"
+          build-cmd: "--version"
+          build-arg1: -PdeployDocsSshKeyPath=deploy-docs.key
+          build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
   - name: build-pull-requests
@@ -247,7 +255,7 @@ groups:
   - name: "Build"
     jobs: [
       "build-check", "build-jdk8", "build-jdk9", "build-jdk10", "build-jdk11", "build-jdk12", "build-snapshot",
-      "deploy-artifacts", "deploy-docs", "deploy-schemas"
+      "deploy-artifacts", "deploy-docs-and-schemas"
     ]
   - name: "Build Pull Requests"
     jobs: ["build-pull-requests"]
