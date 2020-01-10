@@ -190,7 +190,8 @@ jobs:
         file: git-repo/ci/tasks/deploy/deploy-artifacts.yml
         vars:
           openjdk-tag: ((openjdk-8-tag))
-          build-cmd: "deployArtifacts"
+          #build-cmd: "deployArtifacts"
+          build-cmd: "--version"
           build-arg1: "finalizeDeployArtifacts"
           build-arg2: -Psigning.secretKeyRingFile=trustedkeys.gpg
           build-arg3: -Psigning.keyId=((spring-gpg-key-id))
