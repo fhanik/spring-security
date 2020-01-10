@@ -221,7 +221,7 @@ jobs:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
           build-cmd: "deployDocs"
-          build-arg1: -PdeployDocsSshKeyPath=/tmp/files/deploy-docs.key
+          build-arg1: -PdeployDocsSshKeyPath=((task.run.dir))/deploy-docs.key
           build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
@@ -231,7 +231,7 @@ jobs:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
           build-cmd: "deploySchema"
-          build-arg1: -PdeployDocsSshKeyPath=deploy-docs.key
+          build-arg1: -PdeployDocsSshKeyPath=((task.run.dir))/deploy-docs.key
           build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
