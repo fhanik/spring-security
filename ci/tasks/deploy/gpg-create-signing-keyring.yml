@@ -10,7 +10,7 @@ inputs:
 outputs:
   - name: git-repo
 run:
-  path: ci/tasks/gpg-create-signing-keyring.sh
+  path: ci/tasks/deploy/gpg-create-signing-keyring.sh
   args:
     - |
       ((public-key))
