@@ -6,9 +6,9 @@ image_resource:
     repository: openjdk
     tag: ((openjdk-tag))
 inputs:
-  - git-repo
+  - name: git-repo
 outputs:
-  - git-repo
+  - name: git-repo
   - name: files
     path: /tmp/files
 run:
