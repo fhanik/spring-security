@@ -34,7 +34,7 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars: &gradle_vars
           openjdk-tag: ((openjdk-8-tag))
           build-cmd: --version
@@ -48,7 +48,7 @@ jobs:
           build-arg8: ((build-arg-empty))
         timeout: ((task-timeout))
       - task: build-jdk-8
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           build-cmd: ((build-java-check-cmd))
@@ -66,12 +66,12 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
         timeout: ((task-timeout))
       - task: build-jdk-8
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
@@ -83,12 +83,12 @@ jobs:
     - get: git-repo
       trigger: true
     - task: jdk-version
-      file: git-repo/ci/tasks/gradle-command.yml
+      file: git-repo/ci/tasks/build-and-test/build-and-test.yml
       vars:
         <<: *gradle_vars
       timeout: ((task-timeout))
     - task: build-jdk-8
-      file: git-repo/ci/tasks/gradle-command.yml
+      file: git-repo/ci/tasks/build-and-test/build-and-test.yml
       vars:
         <<: *gradle_vars
         openjdk-tag: ((openjdk-8-tag))
@@ -105,13 +105,13 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-9-tag))
         timeout: ((task-timeout))
       - task: build-jdk-9
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-9-tag))
@@ -123,13 +123,13 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-10-tag))
         timeout: ((task-timeout))
       - task: build-jdk-10
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-10-tag))
@@ -141,13 +141,13 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-11-tag))
         timeout: ((task-timeout))
       - task: build-jdk-11
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-11-tag))
@@ -159,13 +159,13 @@ jobs:
       - get: git-repo
         trigger: true
       - task: jdk-version
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-12-tag))
         timeout: ((task-timeout))
       - task: build-jdk-12
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build-and-test/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-12-tag))
@@ -178,17 +178,16 @@ jobs:
         trigger: true
         passed: [build-check, build-jdk8, build-jdk9, build-jdk10, build-jdk11, build-jdk12, build-snapshot]
       - task: create-gpg-ring
-        file: git-repo/ci/tasks/gpg-create-signing-keyring.yml
-        vars: {
-          openjdk-tag: ((openjdk-8-tag)),
-          private-key: ((spring-gpg.private_key)),
-          public-key: ((spring-gpg.public_key)),
-          pass-phrase: ((spring-gpg-passphrase)),
-        }
+        file: git-repo/ci/tasks/deploy/gpg-create-signing-keyring.yml
+        vars:
+          openjdk-tag: ((openjdk-8-tag))
+          private-key: ((spring-gpg.private_key))
+          public-key: ((spring-gpg.public_key))
+          pass-phrase: ((spring-gpg-passphrase))
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
       - task: deploy-artifacts
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/deploy/deploy-artifacts.yml
         vars:
           openjdk-tag: ((openjdk-8-tag))
           build-cmd: "deployArtifacts"
@@ -208,7 +207,7 @@ jobs:
         trigger: true
         passed: [deploy-artifacts]
       - task: create-docs-ssh-key
-        file: git-repo/ci/tasks/write-file.yml
+        file: git-repo/ci/tasks/deploy/write-file.yml
         vars:
           openjdk-tag: ((openjdk-8-tag))
           private-key: ((docs_ssh_key.private_key))
@@ -216,21 +215,21 @@ jobs:
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
       - task: deploy-docs
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/deploy/deploy-docs-and-schemas.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
-          build-cmd: "--version"
-          build-arg1: -PdeployDocsSshKeyPath=deploy-docs.key
+          build-cmd: "deployDocs"
+          build-arg1: -PdeployDocsSshKeyPath=/tmp/files/deploy-docs.key
           build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
         on_failure: *on_failure_tag
       - task: deploy-schemas
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/deploy/deploy-docs-and-schemas.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))
-          build-cmd: "--version"
+          build-cmd: "deploySchema"
           build-arg1: -PdeployDocsSshKeyPath=deploy-docs.key
           build-arg2: -PdeployDocsSshUsername=concourse
         timeout: ((task-timeout))
@@ -244,7 +243,7 @@ jobs:
         trigger: true
         version: every
       - task: build-jdk-8-pr
-        file: git-repo/ci/tasks/gradle-command.yml
+        file: git-repo/ci/tasks/build/build-and-test.yml
         vars:
           <<: *gradle_vars
           openjdk-tag: ((openjdk-8-tag))

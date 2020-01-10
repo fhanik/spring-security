@@ -7,9 +7,9 @@ image_resource:
     tag: ((openjdk-tag))
 inputs:
   - name: git-repo
+  - name: files
 outputs:
-  - name: build-((openjdk-tag))-results
-    path: git-repo
+  - name: git-repo
 run:
   path: ./gradlew
   args: [
@@ -27,6 +27,5 @@ run:
     "--stacktrace",
     "--refresh-dependencies",
   ]
-  #args: [":spring-security-core:assemble", "--no-daemon", "--stacktrace"]
   dir: git-repo
 

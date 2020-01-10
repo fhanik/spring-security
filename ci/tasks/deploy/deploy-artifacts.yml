@@ -1,0 +1,30 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: openjdk
+    tag: ((openjdk-tag))
+inputs:
+  - name: git-repo
+outputs:
+  - name: git-repo
+run:
+  path: ./gradlew
+  args: [
+    "clean",
+    deployArtifacts,
+    ((build-arg1)),
+    ((build-arg2)),
+    ((build-arg3)),
+    ((build-arg4)),
+    ((build-arg5)),
+    ((build-arg6)),
+    ((build-arg7)),
+    ((build-arg8)),
+    "--no-daemon",
+    "--stacktrace",
+    "--refresh-dependencies",
+  ]
+  dir: git-repo
+

@@ -5,14 +5,14 @@ image_resource:
   source:
     repository: openjdk
     tag: ((openjdk-tag))
-inputs:
-  - name: git-repo
 outputs:
-  - name: git-repo
+  - name: files
+    path: /tmp/files
 run:
-  path: ci/tasks/write-file.sh
+  path: ci/tasks/deploy/write-file.sh
   args:
     - |
       ((private-key))
     - ((file-name))
+    - /tmp/files
   dir: git-repo
